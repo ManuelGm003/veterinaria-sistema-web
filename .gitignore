@@ -147,3 +147,4 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+-e "\n# Python\n__pycache__/\n*.py[cod]\nvenv/\n.venv/"
