@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // =====================================================================
-// RF-04: GESTIÓN DE CATEGORÍAS[cite: 7]
+// RF-04: GESTIÓN DE CATEGORÍAS
 // =====================================================================
 app.get('/api/categorias', async (req, res) => {
     try {
@@ -33,7 +33,7 @@ app.post('/api/categorias', async (req, res) => {
 });
 
 // =====================================================================
-// RF-05: GESTIÓN DE PROVEEDORES[cite: 7]
+// RF-05: GESTIÓN DE PROVEEDORES
 // =====================================================================
 app.get('/api/proveedores', async (req, res) => {
     try {
@@ -58,7 +58,7 @@ app.post('/api/proveedores', async (req, res) => {
 });
 
 // =====================================================================
-// RF-03: GESTIÓN DE PRODUCTOS[cite: 7, 13]
+// RF-03: GESTIÓN DE PRODUCTOS
 // =====================================================================
 app.get('/api/productos', async (req, res) => {
     try {
@@ -96,7 +96,7 @@ app.post('/api/productos', async (req, res) => {
 });
 
 // =====================================================================
-// RF-06 y RF-09: ENTRADA DE INVENTARIO Y CONTROL DE LOTES[cite: 7]
+// RF-06 y RF-09: ENTRADA DE INVENTARIO Y CONTROL DE LOTES
 // =====================================================================
 app.post('/api/inventario/entrada', async (req, res) => {
     const { idProveedor, fecha, observaciones, totalProductos, productos } = req.body;
@@ -116,14 +116,14 @@ app.post('/api/inventario/entrada', async (req, res) => {
 
         // 2. Procesar cada producto ingresado
         for (const item of productos) {
-            // A. Registrar el lote obligatoriamente con su fecha de vencimiento[cite: 7, 13]
+            // A. Registrar el lote obligatoriamente con su fecha de vencimiento
             const [loteResult] = await connection.query(
                 'INSERT INTO lote (idProducto, numeroLote, fechaVencimiento, cantidad, estado_disponible) VALUES (?, ?, ?, ?, 1)',
                 [item.idProducto, item.numeroLote, item.fechaVencimiento, item.cantidad]
             );
             const idLote = loteResult.insertId;
 
-            // B. Registrar el detalle de la entrada vinculando la entrada, el producto y el lote[cite: 13]
+            // B. Registrar el detalle de la entrada vinculando la entrada, el producto y el lote
             await connection.query(
                 'INSERT INTO detalle_entrada (idEntrada, idProducto, idLote, cantidad, precioCompra, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
                 [idEntrada, item.idProducto, idLote, item.cantidad, item.precioCompra, (item.cantidad * item.precioCompra)]
@@ -144,7 +144,7 @@ app.post('/api/inventario/entrada', async (req, res) => {
 });
 
 // =====================================================================
-// RF-07: AJUSTE MANUAL DE INVENTARIO (Lotes vencidos/dañados)[cite: 7]
+// RF-07: AJUSTE MANUAL DE INVENTARIO (Lotes vencidos/dañados)
 // =====================================================================
 app.put('/api/lotes/:id/ajuste', async (req, res) => {
     const idLote = req.params.id;
@@ -159,7 +159,7 @@ app.put('/api/lotes/:id/ajuste', async (req, res) => {
             [nuevaCantidad, estadoDisponible, idLote]
         );
         
-        // Aquí podrías agregar un INSERT a una tabla de auditoría (ej. 'bitacora_ajustes') si lo requieren
+       
         res.json({ msg: "Stock del lote actualizado correctamente", lote: idLote, cantidad: nuevaCantidad, motivo });
     } catch (error) {
         res.status(500).json({ error: error.message });
