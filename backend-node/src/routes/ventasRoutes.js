@@ -2,92 +2,90 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 
-// Registrar Venta (POS) con validación de recetas (RF-13) y descuento de stock (RF-08)
+// 1. CREATE (Procesar Venta / POS - RF-12)
 router.post('/', async (req, res) => {
-  const { id_usuario, total, descuento, metodo_pago, codigo_prescripcion, productos } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { cliente_id, prescripcion_id, total, detalles } = req.body;
 
-  if (!productos || productos.length === 0) {
-    return res.status(400).json({ error: 'No se enviaron productos en la venta.' });
-  }
+        const ventaRes = await client.query(
+            `INSERT INTO ventas (cliente_id, prescripcion_id, total) VALUES ($1, $2, $3) RETURNING id`,
+            [cliente_id, prescripcion_id, total]
+        );
+        const ventaId = ventaRes.rows[0].id;
 
-  const client = await pool.connect();
+        if (detalles && detalles.length > 0) {
+            for (let item of detalles) {
+                await client.query(
+                    `INSERT INTO detalle_ventas (venta_id, producto_id, lote_id, cantidad, precio_unitario, subtotal) 
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [ventaId, item.producto_id, item.lote_id, item.cantidad, item.precio_unitario, item.cantidad * item.precio_unitario]
+                );
 
-  try {
-    await client.query('BEGIN');
+                // Descontar el stock correspondiente del lote
+                await client.query(
+                    `UPDATE lotes SET cantidad = cantidad - $1 WHERE id = $2`,
+                    [item.cantidad, item.lote_id]
+                );
+            }
+        }
 
-    // 1. Verificar si algún producto requiere prescripción médica
-    let requiereReceta = false;
-    for (const item of productos) {
-      const prodRes = await client.query(
-        'SELECT requiere_prescripcion FROM producto WHERE id = $1',
-        [item.id_producto]
-      );
-
-      if (prodRes.rows.length > 0 && prodRes.rows[0].requiere_prescripcion) {
-        requiereReceta = true;
-        break;
-      }
+        await client.query('COMMIT');
+        res.status(201).json({ mensaje: 'Venta registrada con éxito', ventaId });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(error);
+        res.status(500).json({ error: 'Error al procesar la venta' });
+    } finally {
+        client.release();
     }
+});
 
-    // 2. Si requiere receta, comprobar que exista
-    if (requiereReceta) {
-      if (!codigo_prescripcion) {
-        throw new Error('Uno o más productos requieren receta médica.');
-      }
-
-      const prescRes = await client.query(
-        'SELECT id FROM prescripcion WHERE numero = $1',
-        [codigo_prescripcion]
-      );
-
-      if (prescRes.rows.length === 0) {
-        throw new Error('La receta médica proporcionada no existe o no es válida.');
-      }
+// 2. READ ALL (Obtener historial de todas las ventas)
+router.get('/', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM ventas ORDER BY id DESC');
+        res.json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener las ventas' });
     }
+});
 
-    // 3. Registrar la Venta (RF-12)
-    const ventaRes = await client.query(
-      `INSERT INTO venta (fecha, id_usuario, total, descuento, metodo_pago, estado) 
-       VALUES (NOW(), $1, $2, $3, $4, 'COMPLETADA') RETURNING id`,
-      [id_usuario, total, descuento || 0, metodo_pago]
-    );
+// 3. READ ONE (Obtener una venta por ID con sus detalles)
+router.get('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const ventaRes = await pool.query('SELECT * FROM ventas WHERE id = $1', [id]);
+        if (ventaRes.rows.length === 0) {
+            return res.status(404).json({ mensaje: 'Venta no encontrada' });
+        }
+        const detallesRes = await pool.query('SELECT * FROM detalle_ventas WHERE venta_id = $1', [id]);
 
-    const idVenta = ventaRes.rows[0].id;
-
-    // 4. Registrar Detalle de venta y descuento atómico de stock (RF-08)
-    for (const item of productos) {
-      const loteRes = await client.query(
-        'SELECT cantidad FROM lote WHERE id = $1 FOR UPDATE',
-        [item.id_lote]
-      );
-
-      if (loteRes.rows.length === 0 || loteRes.rows[0].cantidad < item.cantidad) {
-        throw new Error(`Stock insuficiente en el lote para el producto ID ${item.id_producto}.`);
-      }
-
-      const subtotal = item.cantidad * item.precio_unitario;
-      await client.query(
-        `INSERT INTO detalle_venta (id_venta, id_producto, id_lote, cantidad, precio_unitario, subtotal) 
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [idVenta, item.id_producto, item.id_lote, item.cantidad, item.precio_unitario, subtotal]
-      );
-
-      // Descontar del lote correspondiente
-      await client.query(
-        'UPDATE lote SET cantidad = cantidad - $1 WHERE id = $2',
-        [item.cantidad, item.id_lote]
-      );
+        res.json({
+            ...ventaRes.rows[0],
+            detalles: detallesRes.rows
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener el detalle de la venta' });
     }
+});
 
-    await client.query('COMMIT');
-    res.status(201).json({ exito: true, mensaje: 'Venta registrada con éxito', id_venta: idVenta });
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    res.status(400).json({ exito: false, error: error.message });
-  } finally {
-    client.release();
-  }
+// 4. DELETE (Anular/Eliminar una venta por ID)
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM ventas WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ mensaje: 'Venta no encontrada' });
+        }
+        res.json({ mensaje: 'Venta anulada correctamente' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al anular la venta' });
+    }
 });
 
 module.exports = router;
