@@ -1,0 +1,150 @@
+================================================================================
+           SISTEMA WEB INTERNO - VETERINARIA VETSALUD
+  CONTROL DE INVENTARIOS, REGISTRO DE VENTAS Y VERIFICACION DE PRESCRIPCIONES
+================================================================================
+
+1. RESUMEN DE LO QUE SE HIZO
+--------------------------------------------------------------------------------
+A. INTEGRACION DE PRISMA ORM:
+   - Se modelo la base de datos completa basada en el Diagrama de Clases (UWE):
+     * Modelos: Rol, Usuario, Categoria, Proveedor, Producto, Lote, 
+       EntradaInventario, DetalleEntrada, Prescripcion, DetallePrescripcion, 
+       Venta, DetalleVenta y Configuracion.
+   - Configuracion de Prisma 7 con driver adapter para MySQL (veterinaria_db).
+   - Se ejecuto la migracion y creacion de tablas ('prisma db push').
+   - Se creo y ejecuto el script de datos iniciales ('prisma/seed.js'):
+     * Roles: Administrador, Cajero, Bodeguero (RF-02).
+     * Usuarios listos para probar con contraseñas encriptadas con bcryptjs:
+       - admin@veterinaria.com      /  admin123
+       - cajero@veterinaria.com     /  cajero123
+       - bodeguero@veterinaria.com  /  bodeguero123
+     * Categorias y Proveedores farmaceuticos inicializados.
+     * Productos y Lotes con fechas de vencimiento reales:
+       - Amoxicilina 250mg: Requiere receta (RF-13), Lote L-12 vence en 5 dias (Alerta Critica).
+       - Ketamina Solucion: Requiere receta (RF-13), Lote L-08, Stock: 3 (Alerta Stock Bajo).
+       - Vacuna Antirrabica: Requiere receta, Lote L-A12, vence en 10 dias, Stock: 2.
+       - Bravecto, Royal Canin Adulto, Shampoo Antipulgas (Venta libre).
+     * Prescripciones medicas activas: REC-892 y REC-101.
+
+B. BACKEND EXPRESS CON PRISMA (backend-node):
+   - Endpoints REST desarrollados:
+     * POST /api/auth/login -> Autenticacion con JWT y roles (RF-01, RF-02).
+     * GET  /api/dashboard -> Tarjetas KPI, grafico 7 dias, alertas (RF-16).
+     * GET/POST/PUT/DELETE /api/productos -> Catalogo y stock (RF-03).
+     * GET/POST/PUT/DELETE /api/categorias -> Categorias (RF-04).
+     * GET/POST/PUT/DELETE /api/proveedores -> Proveedores (RF-05).
+     * POST /api/inventario/entradas -> Entrada con lotes y vencimiento (RF-06, RF-09).
+     * GET  /api/inventario/lotes -> Semaforo de dias para vencer (RF-09, RF-11).
+     * PUT  /api/inventario/lotes/:id/ajuste -> Ajuste de mermas/roturas (RF-07).
+     * GET  /api/prescripciones/validar/:codigo -> Validacion estricta (RF-13).
+     * POST /api/ventas -> Cobro POS con validacion de receta y descuento 
+       automatico de stock por lote con transaccion segura (RF-08, RF-12, RF-13).
+     * GET  /api/reportes/ventas e inventario -> Reportes financieros (RF-14, RF-15).
+     * GET/POST/PUT /api/usuarios -> Gestion de usuarios y roles (RF-02).
+     * GET/PUT /api/configuracion -> Datos de la clinica y alertas.
+
+C. FRONTEND COMPLETO (HTML5 + CSS + JavaScript Vanilla):
+   - Pantallas segun wireframes y diagrama de presentacion:
+     1. Login (UI01): Tarjeta con botones rapidos de demostracion de rol.
+     2. Dashboard (UI02): KPIs (Ventas del dia, Productos, Stock Bajo, Proximos
+        a vencer), Grafico de lineas Chart.js de ultimos 7 dias, Grafico de dona
+        por categorias, y panel de Alertas del Sistema.
+     3. Punto de Venta / POS (UI03): Buscador dinamico de productos, tabla de
+        carrito, BANNER DE ALERTA DE PRESCRIPCION MEDICA OBLIGATORIA (RF-13) si
+        se agrega un farmaco controlado, verificador en vivo de receta, calculo
+        de cambio y modal con Ticket Termico listo para impresion (@media print).
+     4. Gestion de Productos (UI04): Busqueda, filtros y modal de nuevo producto.
+     5. Gestion de Categorias y Proveedores: Tablas con altas y bajas.
+     6. Inventario y Lotes: Semaforo verde/amarillo/rojo de vencimientos, modal
+        de ajuste de mermas y modal de entrada de mercaderia (RF-06).
+     7. Prescripciones Medicas: Herramienta de verificacion rapida.
+     8. Reportes: Balance financiero y desglose de tickets.
+     9. Usuarios: Control de acceso segun rol.
+     10. Configuracion: Parametros del sistema y limites de alertas.
+   - Modo Oscuro / Modo Claro conmutables y diseño responsivo.
+
+
+================================================================================
+2. COMO PROBAR EL SISTEMA PASO A PASO
+================================================================================
+PASO 1: ASEGURAR QUE EL SERVIDOR ESTA CORRIENDO
+   - Abre una terminal en la carpeta del proyecto y ejecuta:
+     cd backend-node
+     node src/index.js
+   - Debera mostrar:
+     "🐾 Servidor Veterinaria corriendo en http://localhost:4000"
+     "📦 Prisma ORM conectado exitosamente"
+
+PASO 2: ABRIR EN EL NAVEGADOR
+   - Abre Google Chrome, Edge o Firefox y visita:
+     http://localhost:4000/
+
+PASO 3: PROBAR EL INICIO DE SESION (LOGIN - UI01)
+   - Veras la pantalla de bienvenida.
+   - Puedes hacer clic en cualquiera de los botones de demo rapido:
+     * Boton "Admin"     -> Llena con admin@veterinaria.com / admin123
+     * Boton "Cajero"    -> Llena con cajero@veterinaria.com / cajero123
+     * Boton "Bodeguero" -> Llena con bodeguero@veterinaria.com / bodeguero123
+   - Haz clic en "Ingresar al Sistema".
+
+PASO 4: PROBAR EL DASHBOARD PRINCIPAL (UI02)
+   - Observa las 4 tarjetas KPI: Ventas del Dia, Productos, Stock Bajo y Vencimientos.
+   - Observa el grafico de lineas interactivo de ventas de los ultimos 7 dias.
+   - Observa el grafico de dona con la participacion de categorias.
+   - Revisa la seccion de "Alertas y Notificaciones" donde se resaltan en rojo y 
+     amarillo los lotes que vencen en menos de 30 dias (ej. Amoxicilina Lote L-12).
+
+PASO 5: PROBAR EL PUNTO DE VENTA (POS) Y VALIDACION DE RECETAS (RF-12 Y RF-13)
+   - Haz clic en "Punto de Venta (POS)" en el menu lateral.
+   - En el buscador escribe: "Bravecto" y presiona Enter o seleccionalo:
+     -> Se agregara al carrito (es de venta libre, no pide receta).
+   - Ahora en el buscador escribe: "Amoxicilina" y agregalo:
+     -> APARECERA AUTOMATICAMENTE EL BANNER AMBAR/ROJO:
+        "Medicamento Restringido Detectado (RF-13): Requiere Prescripcion Medica Obligatoria".
+   - Si intentas dar clic en "[ REGISTRAR Y COBRAR ]", el sistema bloquea la venta.
+   - En el campo de receta escribe: REC-892 y haz clic en "Validar Prescripcion".
+     -> Mostrara el badge verde "AUTORIZADA" con los datos del Dr. Carlos Mora y el tutor.
+   - Escribe el monto recibido en "Paga con" (ej. 1000) para ver el calculo de cambio.
+   - Haz clic en "[ REGISTRAR Y COBRAR ]":
+     -> La venta se procesa en Prisma, descuenta el stock del lote y abre la 
+        vista previa del Ticket Termico para imprimir con formato de factura.
+
+PASO 6: PROBAR EL CONTROL DE LOTES E INVENTARIO
+   - Entra a "Inventario y Lotes".
+   - Veras la tabla con el semaforo de caducidad (Critico, Proximo a Vencer, Optimo).
+   - Haz clic en el boton "Ajustar" en un lote para registrar una merma o baja.
+   - Haz clic en "+ Registrar Entrada de Inventario" para simular la llegada de 
+     un nuevo lote con su fecha de vencimiento y proveedor.
+
+PASO 7: PROBAR REPORTES Y CONFIGURACION
+   - Entra a "Reportes" para ver la valoracion economica del stock.
+   - Entra a "Configuracion" para personalizar el nombre de la clinica o los dias de alerta.
+
+
+================================================================================
+3. COMO SUBIR EL AVANCE A GITHUB
+================================================================================
+Abre tu terminal (PowerShell o Git Bash) en la raiz del proyecto:
+(C:\Users\MNL\Desktop\veterinaria-sistema-web)
+
+Ejecuta los siguientes comandos en orden:
+
+# 1. Comprobar los archivos modificados y nuevos:
+git status
+
+# 2. Agregar todos los cambios al area de preparacion (staging):
+git add .
+
+# 3. Crear el commit descriptivo con los requerimientos implementados:
+git commit -m "feat: Integracion de Prisma ORM con MySQL y Frontend completo de Veterinaria (Dashboard, POS con RF-13, Inventario y Reportes)"
+
+# 4. Enviar los cambios a la rama actual en GitHub (develop):
+git push origin develop
+
+--------------------------------------------------------------------------------
+Si en el futuro deseas fusionar tu avance en la rama principal (main):
+git checkout main
+git merge develop
+git push origin main
+git checkout develop
+================================================================================

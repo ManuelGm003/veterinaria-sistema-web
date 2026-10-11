@@ -1,0 +1,200 @@
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Rol {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique @db.VarChar(50)
+  descripcion String?   @db.VarChar(255)
+  usuarios    Usuario[]
+  permisos    Permiso[]
+
+  @@map("rol")
+}
+
+model Permiso {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @db.VarChar(50)
+  descripcion String? @db.VarChar(255)
+  rolId       Int?    @map("rol_id")
+  rol         Rol?    @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@map("permiso")
+}
+
+model Usuario {
+  id             Int       @id @default(autoincrement())
+  nombre         String    @db.VarChar(100)
+  email          String    @unique @db.VarChar(100)
+  password       String    @db.VarChar(255)
+  rolId          Int       @map("rol_id")
+  rol            Rol       @relation(fields: [rolId], references: [id])
+  estado         Boolean   @default(true)
+  ultimaConexion DateTime? @map("ultima_conexion")
+  ventas         Venta[]
+
+  @@map("usuario")
+}
+
+model Categoria {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique @db.VarChar(100)
+  descripcion String?    @db.VarChar(255)
+  estado      Boolean    @default(true)
+  productos   Producto[]
+
+  @@map("categoria")
+}
+
+model Proveedor {
+  id          Int                 @id @default(autoincrement())
+  nombre      String              @db.VarChar(150)
+  telefono    String?             @db.VarChar(50)
+  email       String?             @db.VarChar(100)
+  direccion   String?             @db.VarChar(255)
+  estado      Boolean             @default(true)
+  productos   Producto[]
+  entradas    EntradaInventario[]
+
+  @@map("proveedor")
+}
+
+model Producto {
+  id                   Int                   @id @default(autoincrement())
+  nombre               String                @db.VarChar(150)
+  descripcion          String?               @db.Text
+  tipo                 String                @default("Medicamento") @db.VarChar(50) // Alimento, Medicamento, Accesorio, Otro
+  requierePrescripcion Boolean               @default(false) @map("requiere_prescripcion")
+  idCategoria          Int                   @map("id_categoria")
+  categoria            Categoria             @relation(fields: [idCategoria], references: [id])
+  idProveedor          Int?                  @map("id_proveedor")
+  proveedor            Proveedor?            @relation(fields: [idProveedor], references: [id])
+  codigoBarras         String?               @unique @map("codigo_barras") @db.VarChar(50)
+  precioCompra         Decimal               @default(0.00) @map("precio_compra") @db.Decimal(10, 2)
+  precioVenta          Decimal               @default(0.00) @map("precio_venta") @db.Decimal(10, 2)
+  stockMinimo          Int                   @default(5) @map("stock_minimo")
+  estado               Boolean               @default(true)
+  lotes                Lote[]
+  detallesEntrada      DetalleEntrada[]
+  detallesVenta        DetalleVenta[]
+  detallesPrescripcion DetallePrescripcion[]
+
+  @@map("producto")
+}
+
+model Lote {
+  id               Int              @id @default(autoincrement())
+  idProducto       Int              @map("id_producto")
+  producto         Producto         @relation(fields: [idProducto], references: [id])
+  numeroLote       String           @map("numero_lote") @db.VarChar(50)
+  fechaVencimiento DateTime         @map("fecha_vencimiento") @db.Date
+  cantidad         Int              @default(0)
+  estadoDisponible Boolean          @default(true) @map("estado_disponible")
+  detallesEntrada  DetalleEntrada[]
+  detallesVenta    DetalleVenta[]
+
+  @@map("lote")
+}
+
+model EntradaInventario {
+  id             Int              @id @default(autoincrement())
+  fecha          DateTime         @default(now())
+  idProveedor    Int?             @map("id_proveedor")
+  proveedor      Proveedor?       @relation(fields: [idProveedor], references: [id])
+  observaciones  String?          @db.Text
+  totalProductos Int              @default(0) @map("total_productos")
+  detalles       DetalleEntrada[]
+
+  @@map("entrada_inventario")
+}
+
+model DetalleEntrada {
+  id           Int               @id @default(autoincrement())
+  idEntrada    Int               @map("id_entrada")
+  entrada      EntradaInventario @relation(fields: [idEntrada], references: [id], onDelete: Cascade)
+  idProducto   Int               @map("id_producto")
+  producto     Producto          @relation(fields: [idProducto], references: [id])
+  idLote       Int?              @map("id_lote")
+  lote         Lote?             @relation(fields: [idLote], references: [id])
+  cantidad     Int
+  precioCompra Decimal           @map("precio_compra") @db.Decimal(10, 2)
+  subtotal     Decimal           @db.Decimal(10, 2)
+
+  @@map("detalle_entrada")
+}
+
+model Prescripcion {
+  id            Int                   @id @default(autoincrement())
+  numero        String                @unique @db.VarChar(50) // ej: "REC-892"
+  fecha         DateTime              @default(now())
+  cliente       String                @db.VarChar(150)
+  veterinario   String                @db.VarChar(150)
+  observaciones String?               @db.Text
+  estado        String                @default("Activa") @db.VarChar(30) // Activa, Utilizada, Vencida
+  detalles      DetallePrescripcion[]
+  ventas        Venta[]
+
+  @@map("prescripcion")
+}
+
+model DetallePrescripcion {
+  id             Int          @id @default(autoincrement())
+  idPrescripcion Int          @map("id_prescripcion")
+  prescripcion   Prescripcion @relation(fields: [idPrescripcion], references: [id], onDelete: Cascade)
+  idProducto     Int          @map("id_producto")
+  producto       Producto     @relation(fields: [idProducto], references: [id])
+  cantidad       Int
+  indicaciones   String?      @db.Text
+
+  @@map("detalle_prescripcion")
+}
+
+model Venta {
+  id             Int            @id @default(autoincrement())
+  fecha          DateTime       @default(now())
+  idUsuario      Int?           @map("id_usuario")
+  usuario        Usuario?       @relation(fields: [idUsuario], references: [id])
+  cliente        String         @default("Cliente General") @db.VarChar(150)
+  prescripcionId Int?           @map("prescripcion_id")
+  prescripcion   Prescripcion?  @relation(fields: [prescripcionId], references: [id])
+  total          Decimal        @default(0.00) @db.Decimal(10, 2)
+  descuento      Decimal        @default(0.00) @db.Decimal(10, 2)
+  metodoPago     String         @default("Efectivo") @map("metodo_pago") @db.VarChar(50)
+  estado         String         @default("Completada") @db.VarChar(30) // Completada, Anulada
+  detalles       DetalleVenta[]
+
+  @@map("venta")
+}
+
+model DetalleVenta {
+  id             Int      @id @default(autoincrement())
+  idVenta        Int      @map("id_venta")
+  venta          Venta    @relation(fields: [idVenta], references: [id], onDelete: Cascade)
+  idProducto     Int      @map("id_producto")
+  producto       Producto @relation(fields: [idProducto], references: [id])
+  idLote         Int?     @map("id_lote")
+  lote           Lote?    @relation(fields: [idLote], references: [id])
+  cantidad       Int
+  precioUnitario Decimal  @map("precio_unitario") @db.Decimal(10, 2)
+  subtotal       Decimal  @db.Decimal(10, 2)
+
+  @@map("detalle_venta")
+}
+
+model Configuracion {
+  id                    Int     @id @default(autoincrement())
+  nombreVeterinaria     String  @default("VetSalud Veterinaria") @map("nombre_veterinaria") @db.VarChar(150)
+  ruc                   String? @default("J0310000000001") @db.VarChar(50)
+  telefono              String? @default("+505 2244-8899") @db.VarChar(50)
+  email                 String? @default("contacto@vetsalud.com") @db.VarChar(100)
+  direccion             String? @default("Calle Principal #124, Managua") @db.VarChar(255)
+  monedaSimbolo         String  @default("C$") @map("moneda_simbolo") @db.VarChar(10)
+  stockMinimoAlerta     Int     @default(5) @map("stock_minimo_alerta")
+  diasAlertaVencimiento Int     @default(30) @map("dias_alerta_vencimiento")
+
+  @@map("configuracion")
+}

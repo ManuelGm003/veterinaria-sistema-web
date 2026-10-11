@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VetSalud - Sistema Web Interno para Control de Inventarios, Ventas y Prescripciones</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ====================================================================
+       1. LOGIN OVERLAY (UI01 - Iniciar Sesión)
+       ==================================================================== -->
+  <div id="login-overlay" class="login-page">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-paw"></i>
+        </div>
+        <h2>Sistema Veterinario</h2>
+        <p>Control de Inventarios, Ventas y Prescripciones</p>
+      </div>
+
+      <form id="form-login">
+        <div class="form-group">
+          <label for="login-email"><i class="fa-solid fa-envelope"></i> Correo / Usuario</label>
+          <input type="email" id="login-email" class="form-control" placeholder="admin@veterinaria.com" required value="admin@veterinaria.com">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> Contraseña</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required value="admin123">
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+          <label style="display:flex; align-items:center; gap: 6px; font-size: 12px; cursor: pointer; color: #94a3b8;">
+            <input type="checkbox" id="login-remember" checked> Recordar sesión
+          </label>
+          <span style="font-size: 11px; color: #38bdf8; font-weight: 600;">Prisma ORM v7 Active</span>
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-lg" style="width: 100%;">
+          <i class="fa-solid fa-right-to-bracket"></i> Ingresar al Sistema
+        </button>
+      </form>
+
+      <!-- Botones de Acceso Rápido para Demostración de Roles (RF-02) -->
+      <div class="quick-roles">
+        <p>Seleccionar Rol de Demostración (RF-02):</p>
+        <div class="quick-roles-btns">
+          <button type="button" class="btn-demo-role" onclick="App.setDemoUser('admin')">
+            <i class="fa-solid fa-user-shield"></i> Admin
+          </button>
+          <button type="button" class="btn-demo-role" onclick="App.setDemoUser('cajero')">
+            <i class="fa-solid fa-cash-register"></i> Cajero
+          </button>
+          <button type="button" class="btn-demo-role" onclick="App.setDemoUser('bodeguero')">
+            <i class="fa-solid fa-boxes-stacked"></i> Bodeguero
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       2. APP SHELL & SIDEBAR NAVIGATION
+       ==================================================================== -->
+  <div class="app-container">
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-paw"></i>
+        </div>
+        <div class="brand-text">
+          <h1>VETSALUD</h1>
+          <span>Veterinaria Web</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Principal</div>
+        <a class="nav-item active" data-section="dashboard" onclick="App.navigateTo('dashboard')">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-section="pos" onclick="App.navigateTo('pos')">
+          <i class="fa-solid fa-cash-register"></i>
+          <span>Punto de Venta (POS)</span>
+          <span class="nav-badge" id="badge-pos-prescription" style="display:none;">REC</span>
+        </a>
+
+        <div class="nav-section-title">Gestión Operativa</div>
+        <a class="nav-item" data-section="productos" onclick="App.navigateTo('productos')">
+          <i class="fa-solid fa-box-open"></i>
+          <span>Productos</span>
+        </a>
+        <a class="nav-item" data-section="categorias" onclick="App.navigateTo('categorias')">
+          <i class="fa-solid fa-tags"></i>
+          <span>Categorías</span>
+        </a>
+        <a class="nav-item" data-section="proveedores" onclick="App.navigateTo('proveedores')">
+          <i class="fa-solid fa-truck-moving"></i>
+          <span>Proveedores</span>
+        </a>
+        <a class="nav-item" data-section="inventario" onclick="App.navigateTo('inventario')">
+          <i class="fa-solid fa-boxes-stacked"></i>
+          <span>Inventario y Lotes</span>
+        </a>
+        <a class="nav-item" data-section="prescripciones" onclick="App.navigateTo('prescripciones')">
+          <i class="fa-solid fa-file-prescription"></i>
+          <span>Prescripciones Médicas</span>
+        </a>
+
+        <div class="nav-section-title">Administración</div>
+        <a class="nav-item" data-section="reportes" onclick="App.navigateTo('reportes')">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+          <span>Reportes</span>
+        </a>
+        <a class="nav-item" data-section="usuarios" id="nav-item-usuarios" onclick="App.navigateTo('usuarios')">
+          <i class="fa-solid fa-users-gear"></i>
+          <span>Usuarios</span>
+        </a>
+        <a class="nav-item" data-section="configuracion" onclick="App.navigateTo('configuracion')">
+          <i class="fa-solid fa-gear"></i>
+          <span>Configuración</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-mini">
+          <div class="avatar" id="sidebar-avatar">MG</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-user-name">Manuel Gutiérrez</div>
+            <div class="user-role" id="sidebar-user-role">Administrador</div>
+          </div>
+        </div>
+        <button class="btn-logout" title="Cerrar sesión" onclick="App.logout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================================================================
+         3. MAIN CONTENT CONTAINER
+         ================================================================== -->
+    <div class="main-wrapper">
+      <header class="top-navbar">
+        <div class="navbar-left">
+          <button class="btn-menu-toggle" onclick="App.toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="page-breadcrumb">
+            <span id="breadcrumb-section">Inicio</span>
+            <i class="fa-solid fa-chevron-right" style="font-size: 10px;"></i>
+            <strong id="breadcrumb-title">Dashboard Principal</strong>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <div class="live-indicator">
+            <span class="pulse-dot"></span>
+            <span>Prisma MySQL Activo</span>
+          </div>
+
+          <button class="btn-theme-toggle" id="btn-theme-toggle" title="Cambiar Tema" onclick="App.toggleTheme()">
+            <i class="fa-solid fa-moon"></i>
+          </button>
+
+          <div style="font-size: 12.5px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-calendar-day" style="color: var(--primary);"></i>
+            <span id="nav-date-display">11 de Octubre, 2026</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="content-body">
+
+        <!-- ==============================================================
+             SECTION: DASHBOARD (UI02)
+             ============================================================== -->
+        <section id="section-dashboard" class="page-section active">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-chart-line" style="color: var(--primary);"></i> Panel Principal (Dashboard)</h2>
+              <p>Monitoreo operativo de ventas, existencias de medicamentos y alertas críticas</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary btn-sm" onclick="App.loadDashboardData()">
+                <i class="fa-solid fa-rotate"></i> Actualizar
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="App.navigateTo('pos')">
+                <i class="fa-solid fa-cart-plus"></i> Nueva Venta
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards Grid (Page 14 & 15) -->
+          <div class="kpi-grid">
+            <div class="kpi-card sales">
+              <div class="kpi-info">
+                <h4>Ventas del Día</h4>
+                <div class="kpi-value" id="kpi-ventas-dia">C$ 12,450.00</div>
+                <div class="kpi-subtext" style="color: var(--success);"><i class="fa-solid fa-arrow-trend-up"></i> Transacciones en vivo</div>
+              </div>
+              <div class="kpi-icon green">
+                <i class="fa-solid fa-sack-dollar"></i>
+              </div>
+            </div>
+
+            <div class="kpi-card inventory">
+              <div class="kpi-info">
+                <h4>Productos en Inventario</h4>
+                <div class="kpi-value" id="kpi-total-productos">1,248</div>
+                <div class="kpi-subtext">Catálogo activo registrado</div>
+              </div>
+              <div class="kpi-icon blue">
+                <i class="fa-solid fa-boxes-stacked"></i>
+              </div>
+            </div>
+
+            <div class="kpi-card low-stock">
+              <div class="kpi-info">
+                <h4>Alerta: Stock Bajo</h4>
+                <div class="kpi-value" id="kpi-stock-bajo">28</div>
+                <div class="kpi-subtext" style="color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i> Requieren reabastecimiento</div>
+              </div>
+              <div class="kpi-icon amber">
+                <i class="fa-solid fa-box-archive"></i>
+              </div>
+            </div>
+
+            <div class="kpi-card expiring">
+              <div class="kpi-info">
+                <h4>Próximos a Vencer</h4>
+                <div class="kpi-value" id="kpi-proximos-vencer">15</div>
+                <div class="kpi-subtext" style="color: var(--danger);"><i class="fa-solid fa-clock"></i> En los próximos 30 días</div>
+              </div>
+              <div class="kpi-icon red">
+                <i class="fa-solid fa-calendar-xmark"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="charts-grid">
+            <div class="card">
+              <div class="chart-card-header">
+                <div>
+                  <h3><i class="fa-solid fa-chart-area" style="color: var(--secondary);"></i> Ventas de los Últimos 7 Días</h3>
+                  <p style="font-size: 12px; color: var(--text-muted);">Comportamiento semanal de ingresos</p>
+                </div>
+              </div>
+              <div class="chart-container">
+                <canvas id="chart-ventas-7dias"></canvas>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="chart-card-header">
+                <div>
+                  <h3><i class="fa-solid fa-chart-pie" style="color: var(--accent-purple);"></i> Categorías más Vendidas</h3>
+                  <p style="font-size: 12px; color: var(--text-muted);">Participación de productos</p>
+                </div>
+              </div>
+              <div class="chart-container" style="display:flex; justify-content:center; align-items:center;">
+                <canvas id="chart-categorias-pie"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen de Alertas y Notificaciones del Sistema (Page 14) -->
+          <div class="card">
+            <div class="chart-card-header">
+              <h3><i class="fa-solid fa-bell" style="color: var(--warning);"></i> Resumen de Alertas y Notificaciones del Sistema</h3>
+              <span class="badge badge-warning" id="badge-total-alertas">0 Activas</span>
+            </div>
+            <div class="alert-list" id="dashboard-alert-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: PUNTO DE VENTA / POS (UI03 - RF-12 & RF-13)
+             ============================================================== -->
+        <section id="section-pos" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-cash-register" style="color: var(--primary);"></i> Módulo de Registro de Ventas (Punto de Venta - POS)</h2>
+              <p>Registro de transacciones, validación de recetas médicas y actualización automática de stock</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary btn-sm" onclick="POS.clearCart()">
+                <i class="fa-solid fa-trash-can"></i> Limpiar Carrito
+              </button>
+            </div>
+          </div>
+
+          <!-- BANNER DE VALIDACIÓN DE PRESCRIPCIÓN OBLIGATORIA (RF-13) -->
+          <div id="pos-prescription-banner" class="pos-prescription-alert">
+            <div class="presc-header">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <div>
+                <h4>Medicamento Restringido Detectado (RF-13)</h4>
+                <p style="font-size: 12.5px; color: var(--text-muted);">
+                  Uno o más medicamentos en este pedido requieren <strong>Prescripción Médica Veterinaria Obligatoria</strong> antes de autorizar la venta.
+                </p>
+              </div>
+            </div>
+
+            <div class="presc-validation-box">
+              <input type="text" id="pos-input-receta" class="pos-search-input presc-input" placeholder="Ej: REC-892 o REC-101" value="REC-892">
+              <button type="button" class="btn btn-warning" onclick="POS.validarReceta()">
+                <i class="fa-solid fa-clipboard-check"></i> Validar Prescripción
+              </button>
+              <span id="pos-receta-status" class="presc-status-tag"></span>
+            </div>
+
+            <div id="pos-receta-details" style="display: none; margin-top: 10px; font-size: 12px; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: var(--radius-sm);">
+              <!-- Details rendered by JS -->
+            </div>
+          </div>
+
+          <div class="pos-container">
+            <!-- Left: Product Search and Cart Table -->
+            <div>
+              <div class="card" style="margin-bottom: 20px;">
+                <div class="pos-search-panel">
+                  <div class="pos-search-input-wrap">
+                    <i class="fa-solid fa-barcode"></i>
+                    <input type="text" id="pos-search-input" class="pos-search-input" placeholder="Ingresar Código de Barras o Nombre del Producto (ej: Bravecto, Amoxicilina, REC-892...)" autocomplete="off">
+                    <div id="pos-autocomplete" class="pos-autocomplete-list"></div>
+                  </div>
+                  <button class="btn btn-primary" onclick="POS.triggerQuickAdd()">
+                    <i class="fa-solid fa-plus"></i> + Agregar
+                  </button>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label><i class="fa-solid fa-user"></i> Cliente / Tutor</label>
+                    <input type="text" id="pos-cliente" class="form-control" value="Cliente General">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label><i class="fa-solid fa-money-bill-wave"></i> Método de Pago</label>
+                    <select id="pos-metodo-pago" class="form-control">
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Tarjeta">Tarjeta de Crédito / Débito</option>
+                      <option value="Transferencia">Transferencia Bancaria</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cart Items Table -->
+              <div class="table-wrapper">
+                <table class="custom-table" id="pos-table">
+                  <thead>
+                    <tr>
+                      <th>Código</th>
+                      <th>Producto</th>
+                      <th>Lote</th>
+                      <th>Prescripción</th>
+                      <th style="width: 120px;">Cantidad</th>
+                      <th>P. Unitario</th>
+                      <th>Subtotal</th>
+                      <th style="text-align: center;">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pos-cart-tbody">
+                    <!-- Cart items rendered by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right: POS Summary & Checkout Card -->
+            <div class="pos-summary-card">
+              <h3 style="font-size: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Resumen de Cobro
+              </h3>
+
+              <div class="pos-summary-row">
+                <span>Subtotal:</span>
+                <span id="pos-summary-subtotal" style="font-weight: 700;">C$ 0.00</span>
+              </div>
+              <div class="pos-summary-row">
+                <span>Descuento:</span>
+                <span id="pos-summary-descuento">C$ 0.00</span>
+              </div>
+              <div class="pos-summary-row">
+                <span>Items en Carrito:</span>
+                <span id="pos-summary-items-count">0 items</span>
+              </div>
+
+              <div class="pos-summary-total">
+                <span>TOTAL:</span>
+                <span class="total-amount" id="pos-summary-total">C$ 0.00</span>
+              </div>
+
+              <div class="form-group" style="margin-top: 18px;">
+                <label for="pos-paga-con">Monto Recibido (Paga con):</label>
+                <input type="number" id="pos-paga-con" class="form-control" placeholder="0.00" oninput="POS.calculateChange()">
+              </div>
+
+              <div class="pos-change-box">
+                <span>Cambio / Vuelto:</span>
+                <span id="pos-summary-cambio" style="color: var(--success);">C$ 0.00</span>
+              </div>
+
+              <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" id="btn-procesar-venta" class="btn btn-primary btn-lg" style="width: 100%;" onclick="POS.procesarVenta()">
+                  <i class="fa-solid fa-check"></i> [ REGISTRAR Y COBRAR ]
+                </button>
+                <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="POS.clearCart()">
+                  <i class="fa-solid fa-xmark"></i> Cancelar Venta
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: GESTIÓN DE PRODUCTOS (UI04 - RF-03)
+             ============================================================== -->
+        <section id="section-productos" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-box-open" style="color: var(--primary);"></i> Catálogo de Productos</h2>
+              <p>Registro, control de precios, clasificación y restricción de prescripción médica</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openProductoModal()">
+                <i class="fa-solid fa-plus"></i> + Nuevo Producto
+              </button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label><i class="fa-solid fa-magnifying-glass"></i> Buscar por Nombre o Código:</label>
+                <input type="text" id="filtro-producto-search" class="form-control" placeholder="Escriba para filtrar..." oninput="App.loadProductos()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label><i class="fa-solid fa-tags"></i> Filtrar por Categoría:</label>
+                <select id="filtro-producto-categoria" class="form-control" onchange="App.loadProductos()">
+                  <option value="">Todas las categorías</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="custom-table" id="tabla-productos">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Nombre del Producto</th>
+                  <th>Categoría</th>
+                  <th>Tipo</th>
+                  <th>P. Compra</th>
+                  <th>P. Venta</th>
+                  <th>Stock Total</th>
+                  <th>Prescripción (RF-13)</th>
+                  <th>Estado</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-productos">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: GESTIÓN DE CATEGORÍAS (RF-04)
+             ============================================================== -->
+        <section id="section-categorias" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-tags" style="color: var(--primary);"></i> Categorías de Productos</h2>
+              <p>Clasificación de inventario para organización y análisis estadístico</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openCategoriaModal()">
+                <i class="fa-solid fa-plus"></i> + Nueva Categoría
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Descripción</th>
+                  <th>Total Productos</th>
+                  <th>Estado</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-categorias">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: GESTIÓN DE PROVEEDORES (RF-05)
+             ============================================================== -->
+        <section id="section-proveedores" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-truck-moving" style="color: var(--primary);"></i> Directorio de Proveedores</h2>
+              <p>Administración de contactos y casas distribuidoras farmacéuticas</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openProveedorModal()">
+                <i class="fa-solid fa-plus"></i> + Nuevo Proveedor
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre / Distribuidora</th>
+                  <th>Teléfono</th>
+                  <th>Email</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-proveedores">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: INVENTARIO, ENTRADAS Y LOTES (UI04, RF-06, RF-07, RF-09, RF-11)
+             ============================================================== -->
+        <section id="section-inventario" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-boxes-stacked" style="color: var(--primary);"></i> Gestión de Inventario, Lotes y Entradas</h2>
+              <p>Trazabilidad por número de lote, semáforo de vencimientos y registro de compras</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openEntradaModal()">
+                <i class="fa-solid fa-dolly"></i> + Registrar Entrada de Inventario (RF-06)
+              </button>
+            </div>
+          </div>
+
+          <!-- Lotes con alerta de caducidad -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="chart-card-header">
+              <h3><i class="fa-solid fa-hourglass-half" style="color: var(--warning);"></i> Control de Lotes y Fechas de Vencimiento (RF-09 & RF-11)</h3>
+              <span class="badge badge-info">Semáforo Activo</span>
+            </div>
+            <div class="table-wrapper">
+              <table class="custom-table" id="tabla-lotes">
+                <thead>
+                  <tr>
+                    <th>Lote</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Vencimiento</th>
+                    <th>Días Restantes</th>
+                    <th>Stock Disponible</th>
+                    <th>Estado</th>
+                    <th style="text-align: center;">Ajuste (RF-07)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-lotes">
+                  <!-- Loaded via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Historial de Entradas -->
+          <div class="card">
+            <div class="chart-card-header">
+              <h3><i class="fa-solid fa-clock-rotate-left" style="color: var(--secondary);"></i> Historial de Entradas de Mercadería</h3>
+            </div>
+            <div class="table-wrapper">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th># Entrada</th>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>Total Items</th>
+                    <th>Observaciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-entradas">
+                  <!-- Loaded via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: PRESCRIPCIONES MÉDICAS (RF-13)
+             ============================================================== -->
+        <section id="section-prescripciones" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-file-prescription" style="color: var(--primary);"></i> Verificación de Prescripciones Médicas (RF-13)</h2>
+              <p>Control estricto de medicamentos controlados para venta segura</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openPrescripcionModal()">
+                <i class="fa-solid fa-plus"></i> + Nueva Prescripción
+              </button>
+            </div>
+          </div>
+
+          <!-- Herramienta Rápida de Verificación -->
+          <div class="card" style="margin-bottom: 24px; border: 2px solid var(--secondary);">
+            <h3 style="font-size: 15px; margin-bottom: 12px;"><i class="fa-solid fa-magnifying-glass"></i> Verificador Rápido de Recetas Veterinarias</h3>
+            <div style="display: flex; gap: 12px; max-width: 500px;">
+              <input type="text" id="input-check-receta" class="form-control" placeholder="Ingrese código (ej: REC-892)" value="REC-892">
+              <button class="btn btn-secondary" onclick="App.verificarRecetaDirecta()">Verificar Código</button>
+            </div>
+            <div id="resultado-check-receta" style="margin-top: 14px; font-size: 13px;"></div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Fecha Emisión</th>
+                  <th>Cliente / Tutor</th>
+                  <th>Veterinario</th>
+                  <th>Medicamentos Prescritos</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-prescripciones">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: REPORTES (RF-14 & RF-15)
+             ============================================================== -->
+        <section id="section-reportes" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-file-invoice-dollar" style="color: var(--primary);"></i> Generación de Reportes</h2>
+              <p>Informes analíticos de ventas, valorización de inventario y pérdidas por mermas</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary btn-sm" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Imprimir Reporte
+              </button>
+            </div>
+          </div>
+
+          <!-- Resumen de Valorización de Inventario (RF-15) -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <h4>Valoración a Costo</h4>
+                <div class="kpi-value" id="rep-costo-total">C$ 0.00</div>
+                <div class="kpi-subtext">Capital invertido en stock</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <h4>Valoración a Venta</h4>
+                <div class="kpi-value" id="rep-venta-total" style="color: var(--success);">C$ 0.00</div>
+                <div class="kpi-subtext">Ingreso proyectado</div>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <h4>Margen Estimado</h4>
+                <div class="kpi-value" id="rep-margen-total" style="color: var(--primary);">C$ 0.00</div>
+                <div class="kpi-subtext">Ganancia bruta potencial</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Historial de Ventas Registradas (RF-14) -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="chart-card-header">
+              <h3><i class="fa-solid fa-receipt"></i> Historial Detallado de Ventas</h3>
+            </div>
+            <div class="table-wrapper">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th># Ticket</th>
+                    <th>Fecha y Hora</th>
+                    <th>Cliente</th>
+                    <th>Cajero</th>
+                    <th>Método Pago</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th style="text-align:center;">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-reporte-ventas">
+                  <!-- Loaded via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: GESTIÓN DE USUARIOS (RF-02)
+             ============================================================== -->
+        <section id="section-usuarios" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-users-gear" style="color: var(--primary);"></i> Gestión de Usuarios y Roles (RF-02)</h2>
+              <p>Control de cuentas y niveles de privilegio: Administrador, Cajero y Bodeguero</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-primary" onclick="Modals.openUsuarioModal()">
+                <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Correo Electrónico</th>
+                  <th>Rol Asignado</th>
+                  <th>Estado</th>
+                  <th>Última Conexión</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-usuarios">
+                <!-- Loaded via JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             SECTION: CONFIGURACIÓN
+             ============================================================== -->
+        <section id="section-configuracion" class="page-section">
+          <div class="page-title-row">
+            <div>
+              <h2><i class="fa-solid fa-gear" style="color: var(--primary);"></i> Configuración del Sistema</h2>
+              <p>Datos fiscales, parámetros de alertas y preferencias de la clínica veterinaria</p>
+            </div>
+          </div>
+
+          <div class="card" style="max-width: 700px;">
+            <form id="form-configuracion" onsubmit="App.saveConfiguracion(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Nombre de la Veterinaria:</label>
+                  <input type="text" id="conf-nombre" class="form-control" required value="VetSalud Veterinaria">
+                </div>
+                <div class="form-group">
+                  <label>Número RUC / Fiscal:</label>
+                  <input type="text" id="conf-ruc" class="form-control" value="J0310000248811">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Teléfono:</label>
+                  <input type="text" id="conf-telefono" class="form-control" value="+505 2244-8899">
+                </div>
+                <div class="form-group">
+                  <label>Correo Electrónico:</label>
+                  <input type="email" id="conf-email" class="form-control" value="contacto@vetsalud.com">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Dirección:</label>
+                <input type="text" id="conf-direccion" class="form-control" value="Semáforos de Villa Fontana 2c al lago, Managua">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Símbolo de Moneda:</label>
+                  <input type="text" id="conf-moneda" class="form-control" value="C$">
+                </div>
+                <div class="form-group">
+                  <label>Alerta de Stock Mínimo por Defecto:</label>
+                  <input type="number" id="conf-stock-min" class="form-control" value="5">
+                </div>
+                <div class="form-group">
+                  <label>Días para Alerta de Vencimiento:</label>
+                  <input type="number" id="conf-dias-vence" class="form-control" value="30">
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Configuración
+              </button>
+            </form>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       4. MODALS
+       ==================================================================== -->
+  
+  <!-- Ticket Receipt Modal -->
+  <div id="modal-ticket" class="modal-overlay">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-receipt"></i> Comprobante de Venta</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-ticket')">&times;</button>
+      </div>
+      <div class="modal-body" style="background-color: #f8fafc; padding: 16px;">
+        <div id="ticket-print-area" class="ticket-preview">
+          <!-- Ticket rendered by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modals.close('modal-ticket')">Cerrar</button>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="fa-solid fa-print"></i> Imprimir Ticket Térmico
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Producto Modal -->
+  <div id="modal-producto" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-producto-title">Nuevo Producto</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-producto')">&times;</button>
+      </div>
+      <form id="form-producto" onsubmit="App.saveProducto(event)">
+        <div class="modal-body">
+          <input type="hidden" id="prod-id">
+          <div class="form-group">
+            <label>Nombre del Producto:</label>
+            <input type="text" id="prod-nombre" class="form-control" required placeholder="Ej: Amoxicilina 500mg">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Código de Barras / Ref:</label>
+              <input type="text" id="prod-codigo" class="form-control" placeholder="Ej: MED-101">
+            </div>
+            <div class="form-group">
+              <label>Categoría:</label>
+              <select id="prod-categoria" class="form-control" required></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo:</label>
+              <select id="prod-tipo" class="form-control">
+                <option value="Medicamento">Medicamento</option>
+                <option value="Alimento">Alimento</option>
+                <option value="Accesorio">Accesorio / Cuidado</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Proveedor:</label>
+              <select id="prod-proveedor" class="form-control"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Precio Compra:</label>
+              <input type="number" step="0.01" id="prod-precio-compra" class="form-control" value="0.00">
+            </div>
+            <div class="form-group">
+              <label>Precio Venta:</label>
+              <input type="number" step="0.01" id="prod-precio-venta" class="form-control" required value="0.00">
+            </div>
+            <div class="form-group">
+              <label>Stock Mínimo Alerta:</label>
+              <input type="number" id="prod-stock-min" class="form-control" value="5">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--danger); font-weight: 700;">
+              <input type="checkbox" id="prod-requiere-receta">
+              ⚠️ Requiere Prescripción Médica Veterinaria Obligatoria (RF-13)
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-producto')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Categoría Modal -->
+  <div id="modal-categoria" class="modal-overlay">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Nueva Categoría</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-categoria')">&times;</button>
+      </div>
+      <form onsubmit="App.saveCategoria(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nombre de la Categoría:</label>
+            <input type="text" id="cat-nombre" class="form-control" required placeholder="Ej: Antibióticos">
+          </div>
+          <div class="form-group">
+            <label>Descripción:</label>
+            <textarea id="cat-descripcion" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-categoria')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Proveedor Modal -->
+  <div id="modal-proveedor" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>Nuevo Proveedor</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-proveedor')">&times;</button>
+      </div>
+      <form onsubmit="App.saveProveedor(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nombre / Distribuidora:</label>
+            <input type="text" id="prov-nombre" class="form-control" required placeholder="Ej: FarmaVet Distribuciones">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Teléfono:</label>
+              <input type="text" id="prov-telefono" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Email:</label>
+              <input type="email" id="prov-email" class="form-control">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Dirección:</label>
+            <input type="text" id="prov-direccion" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-proveedor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Entrada de Inventario Modal (RF-06 & RF-09) -->
+  <div id="modal-entrada" class="modal-overlay">
+    <div class="modal-container" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-dolly"></i> Entrada de Inventario y Registro de Lote (RF-06)</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-entrada')">&times;</button>
+      </div>
+      <form onsubmit="App.saveEntradaInventario(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Proveedor:</label>
+              <select id="ent-proveedor" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Recepción:</label>
+              <input type="date" id="ent-fecha" class="form-control" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Observaciones / Factura del Proveedor:</label>
+            <input type="text" id="ent-obs" class="form-control" placeholder="Ej: Factura #9812 - Lote regular">
+          </div>
+
+          <h4 style="font-size: 14px; margin: 18px 0 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+            Datos del Producto y Lote:
+          </h4>
+          <div class="form-group">
+            <label>Producto a Ingresar:</label>
+            <select id="ent-producto" class="form-control" required></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Número de Lote:</label>
+              <input type="text" id="ent-lote-num" class="form-control" required placeholder="Ej: L-4819">
+            </div>
+            <div class="form-group">
+              <label>Fecha de Vencimiento (RF-09):</label>
+              <input type="date" id="ent-vencimiento" class="form-control" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cantidad a Ingresar:</label>
+              <input type="number" id="ent-cantidad" class="form-control" required min="1" value="10">
+            </div>
+            <div class="form-group">
+              <label>Precio Compra Unitario:</label>
+              <input type="number" step="0.01" id="ent-precio-compra" class="form-control" value="0.00">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-entrada')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Procesar Entrada y Actualizar Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ajuste de Lote Modal (RF-07) -->
+  <div id="modal-ajuste-lote" class="modal-overlay">
+    <div class="modal-container" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3>Ajuste Manual de Lote (RF-07)</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-ajuste-lote')">&times;</button>
+      </div>
+      <form onsubmit="App.saveAjusteLote(event)">
+        <div class="modal-body">
+          <input type="hidden" id="ajuste-lote-id">
+          <p id="ajuste-lote-info" style="font-size: 13px; margin-bottom: 14px; font-weight: 600;"></p>
+          <div class="form-group">
+            <label>Nueva Cantidad en Almacén:</label>
+            <input type="number" id="ajuste-cantidad" class="form-control" required min="0">
+          </div>
+          <div class="form-group">
+            <label>Motivo del Ajuste:</label>
+            <select id="ajuste-motivo" class="form-control">
+              <option value="Merma por lote vencido">Merma por lote vencido</option>
+              <option value="Producto dañado o roto">Producto dañado o roto</option>
+              <option value="Ajuste por conteo físico">Ajuste por conteo físico</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-ajuste-lote')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar Ajuste</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Prescripción Modal -->
+  <div id="modal-prescripcion" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>Registrar Prescripción Médica (RF-13)</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-prescripcion')">&times;</button>
+      </div>
+      <form onsubmit="App.savePrescripcion(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Código / Número de Receta:</label>
+              <input type="text" id="rec-codigo" class="form-control" required placeholder="Ej: REC-900">
+            </div>
+            <div class="form-group">
+              <label>Cliente / Tutor:</label>
+              <input type="text" id="rec-cliente" class="form-control" required placeholder="Nombre del dueño">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Médico Veterinario y Colegiatura:</label>
+            <input type="text" id="rec-veterinario" class="form-control" required placeholder="Dr. Carlos Mora - Col. 4521">
+          </div>
+          <div class="form-group">
+            <label>Diagnóstico / Observaciones:</label>
+            <textarea id="rec-observaciones" class="form-control" rows="2" placeholder="Tratamiento antibiótico para..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Medicamento:</label>
+              <select id="rec-producto" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad Dosis:</label>
+              <input type="number" id="rec-cantidad" class="form-control" value="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Indicaciones de Administración:</label>
+            <input type="text" id="rec-indicaciones" class="form-control" placeholder="1 cápsula c/12 hrs">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-prescripcion')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Prescripción</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Usuario Modal (RF-02) -->
+  <div id="modal-usuario" class="modal-overlay">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Nuevo Usuario (RF-02)</h3>
+        <button class="btn-close-modal" onclick="Modals.close('modal-usuario')">&times;</button>
+      </div>
+      <form onsubmit="App.saveUsuario(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nombre Completo:</label>
+            <input type="text" id="usr-nombre" class="form-control" required placeholder="Ej: Jonathan Flores">
+          </div>
+          <div class="form-group">
+            <label>Correo Electrónico:</label>
+            <input type="email" id="usr-email" class="form-control" required placeholder="usuario@veterinaria.com">
+          </div>
+          <div class="form-group">
+            <label>Contraseña:</label>
+            <input type="password" id="usr-password" class="form-control" required placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>Rol de Acceso:</label>
+            <select id="usr-rol" class="form-control" required>
+              <option value="1">Administrador (Control Total)</option>
+              <option value="2">Cajero (Punto de Venta POS)</option>
+              <option value="3">Bodeguero (Inventario y Lotes)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="Modals.close('modal-usuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
