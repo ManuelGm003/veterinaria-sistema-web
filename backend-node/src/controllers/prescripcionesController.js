@@ -140,9 +140,11 @@ const deletePrescripcion = async (req, res) => {
 };
 
 module.exports = {
-    validarPrescripcion,
-    getPrescripciones,
-    createPrescripcion,
+    crearPrescripcion,
+    obtenerPrescripcionesPorMascota,
+    obtenerPrescripcionesPorEstado,
+    actualizarPrescripcion,
+    anularPrescripcion,
     updatePrescripcion,
     deletePrescripcion
 };
