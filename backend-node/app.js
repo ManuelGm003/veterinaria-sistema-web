@@ -166,6 +166,13 @@ app.put('/api/lotes/:id/ajuste', async (req, res) => {
     }
 });
 
+// Importar el controlador del historial
+const { crearHistorial, obtenerHistorialPorPaciente } = require('./src/controllers/historialController');
+
+// Rutas para el historial clínico
+app.post('/api/historial', crearHistorial);
+app.get('/api/historial/:pacienteId', obtenerHistorialPorPaciente);
+
 // Iniciar el servidor en el puerto 3000
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
