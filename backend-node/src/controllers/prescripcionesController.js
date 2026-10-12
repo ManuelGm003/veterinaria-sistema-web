@@ -45,7 +45,26 @@ const validarPrescripcion = async (req, res) => {
 
 const getPrescripciones = async (req, res) => {
     try {
+        const { search, estado } = req.query;
+        const whereClause = {};
+
+        // Filtro opcional por estado
+        if (estado) {
+            whereClause.estado = estado.toUpperCase();
+        }
+
+        // Búsqueda en tiempo real por número, cliente, veterinario u observaciones
+        if (search) {
+            whereClause.OR = [
+                { numero: { contains: search } },
+                { cliente: { contains: search } },
+                { veterinario: { contains: search } },
+                { observaciones: { contains: search } }
+            ];
+        }
+
         const prescripciones = await prisma.prescripcion.findMany({
+            where: whereClause,
             include: {
                 detalles: {
                     include: { producto: true }
@@ -61,7 +80,6 @@ const getPrescripciones = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 const createPrescripcion = async (req, res) => {
     try {
         const { numero, fecha, cliente, veterinario, observaciones, detalles } = req.body;
