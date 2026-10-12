@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+// Importar rutas
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const productosRoutes = require('./routes/productosRoutes');
@@ -15,6 +16,7 @@ const usuariosRoutes = require('./routes/usuariosRoutes');
 const reportesRoutes = require('./routes/reportesRoutes');
 const configuracionRoutes = require('./routes/configuracionRoutes');
 
+// Crear aplicación Express
 const app = express();
 
 // Middlewares
@@ -61,6 +63,8 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
+
+// Iniciar servidor
 app.listen(PORT, () => {
     console.log(`=======================================================`);
     console.log(`🐾 Servidor Veterinaria corriendo en http://localhost:${PORT}`);

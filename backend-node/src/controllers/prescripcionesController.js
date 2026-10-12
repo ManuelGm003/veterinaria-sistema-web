@@ -138,13 +138,62 @@ const deletePrescripcion = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+// ==========================================
+// FUNCIONES NUEVAS AGREGADAS POR JONATHAN
+// ==========================================
 
+// 1. Obtener prescripciones de una mascota específica
+const obtenerPrescripcionesPorMascota = async (req, res) => {
+    try {
+        const { mascotaId } = req.params;
+        const prescripciones = await prisma.prescripcion.findMany({
+            where: { mascotaId: parseInt(mascotaId) }
+        });
+        return res.status(200).json(prescripciones);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+// 2. Obtener prescripciones por estado (ej. ACTIVA, CANCELADA)
+const obtenerPrescripcionesPorEstado = async (req, res) => {
+    try {
+        const { estado } = req.params;
+        const prescripciones = await prisma.prescripcion.findMany({
+            where: { estado: estado.toUpperCase() }
+        });
+        return res.status(200).json(prescripciones);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+
+// 3. Anular una prescripción médica
+const anularPrescripcion = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const prescripcionAnulada = await prisma.prescripcion.update({
+            where: { id: parseInt(id) },
+            data: { estado: 'ANULADA' }
+        });
+        return res.status(200).json({ 
+            message: 'Prescripción anulada con éxito', 
+            prescripcion: prescripcionAnulada 
+        });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
 module.exports = {
-    crearPrescripcion,
+    // Funciones del grupo (Intactas)
+    validarPrescripcion,
+    getPrescripciones,
+    createPrescripcion,
+    updatePrescripcion,
+    deletePrescripcion,
+
+    // Funciones Nuevas
     obtenerPrescripcionesPorMascota,
     obtenerPrescripcionesPorEstado,
-    actualizarPrescripcion,
-    anularPrescripcion,
-    updatePrescripcion,
-    deletePrescripcion
+    anularPrescripcion
 };
