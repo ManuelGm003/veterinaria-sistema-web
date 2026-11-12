@@ -1,4 +1,8 @@
 const prisma = require('../config/prisma');
+const {
+    isPositiveInteger,
+    isNonEmptyString
+} = require('../utils/validators');
 
 const getCategorias = async (req, res) => {
     try {
@@ -20,10 +24,25 @@ const getCategorias = async (req, res) => {
 const createCategoria = async (req, res) => {
     try {
         const { nombre, descripcion } = req.body;
-        if (!nombre) return res.status(400).json({ message: 'El nombre es obligatorio' });
+        if (!isNonEmptyString(nombre)) {
+            return res.status(400).json({ message: 'El nombre de la categoría es obligatorio y no puede estar vacío.' });
+        }
+
+        const nombreTrim = nombre.trim();
+        const existente = await prisma.categoria.findFirst({
+            where: { nombre: nombreTrim }
+        });
+
+        if (existente) {
+            return res.status(400).json({ message: 'Ya existe una categoría con este nombre.' });
+        }
 
         const categoria = await prisma.categoria.create({
-            data: { nombre, descripcion, estado: true }
+            data: {
+                nombre: nombreTrim,
+                descripcion: descripcion ? descripcion.trim() : '',
+                estado: true
+            }
         });
         res.status(201).json(categoria);
     } catch (error) {
@@ -34,10 +53,21 @@ const createCategoria = async (req, res) => {
 const updateCategoria = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de categoría inválido' });
+        }
+
         const { nombre, descripcion } = req.body;
+        if (!isNonEmptyString(nombre)) {
+            return res.status(400).json({ message: 'El nombre de la categoría no puede estar vacío.' });
+        }
+
         const categoria = await prisma.categoria.update({
             where: { id },
-            data: { nombre, descripcion }
+            data: {
+                nombre: nombre.trim(),
+                descripcion: descripcion ? descripcion.trim() : ''
+            }
         });
         res.json(categoria);
     } catch (error) {
@@ -48,6 +78,10 @@ const updateCategoria = async (req, res) => {
 const deleteCategoria = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de categoría inválido' });
+        }
+
         await prisma.categoria.update({
             where: { id },
             data: { estado: false }

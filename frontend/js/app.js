@@ -416,15 +416,53 @@ const App = {
     async saveProducto(e) {
         e.preventDefault();
         const id = document.getElementById('prod-id').value;
+        const nombre = document.getElementById('prod-nombre').value.trim();
+        const idCategoria = document.getElementById('prod-categoria').value;
+        const rawPrecioCompra = document.getElementById('prod-precio-compra').value;
+        const rawPrecioVenta = document.getElementById('prod-precio-venta').value;
+        const rawStockMinimo = document.getElementById('prod-stock-min').value;
+
+        if (!nombre) {
+            this.showToast('El nombre del producto es obligatorio y no puede estar vacío', 'error');
+            return;
+        }
+        if (!idCategoria || parseInt(idCategoria) <= 0) {
+            this.showToast('Debe seleccionar una categoría válida', 'error');
+            return;
+        }
+
+        const precioCompra = parseFloat(rawPrecioCompra);
+        if (isNaN(precioCompra) || precioCompra <= 0 || Object.is(Number(rawPrecioCompra), -0)) {
+            this.showToast('El precio de compra debe ser mayor a 0 (no se permite 0, -0 ni valores negativos)', 'error');
+            return;
+        }
+
+        const precioVenta = parseFloat(rawPrecioVenta);
+        if (isNaN(precioVenta) || precioVenta <= 0 || Object.is(Number(rawPrecioVenta), -0)) {
+            this.showToast('El precio de venta debe ser mayor a 0 (no se permite 0, -0 ni valores negativos)', 'error');
+            return;
+        }
+
+        if (precioVenta < precioCompra) {
+            this.showToast(`El precio de venta (C$ ${precioVenta.toFixed(2)}) no puede ser menor al precio de compra (C$ ${precioCompra.toFixed(2)})`, 'error');
+            return;
+        }
+
+        const stockMinimo = parseInt(rawStockMinimo);
+        if (isNaN(stockMinimo) || stockMinimo <= 0 || Object.is(Number(rawStockMinimo), -0)) {
+            this.showToast('El stock mínimo de alerta debe ser un número entero mayor a 0', 'error');
+            return;
+        }
+
         const data = {
-            nombre: document.getElementById('prod-nombre').value,
-            codigoBarras: document.getElementById('prod-codigo').value,
-            idCategoria: document.getElementById('prod-categoria').value,
+            nombre,
+            codigoBarras: document.getElementById('prod-codigo').value.trim(),
+            idCategoria: parseInt(idCategoria),
             tipo: document.getElementById('prod-tipo').value,
-            idProveedor: document.getElementById('prod-proveedor').value,
-            precioCompra: document.getElementById('prod-precio-compra').value,
-            precioVenta: document.getElementById('prod-precio-venta').value,
-            stockMinimo: document.getElementById('prod-stock-min').value,
+            idProveedor: document.getElementById('prod-proveedor').value || null,
+            precioCompra,
+            precioVenta,
+            stockMinimo,
             requierePrescripcion: document.getElementById('prod-requiere-receta').checked
         };
 
@@ -505,13 +543,19 @@ const App = {
 
     async saveCategoria(e) {
         e.preventDefault();
+        const nombre = document.getElementById('cat-nombre').value.trim();
+        if (!nombre) {
+            this.showToast('El nombre de la categoría es obligatorio y no puede estar vacío', 'error');
+            return;
+        }
+
         const data = {
-            nombre: document.getElementById('cat-nombre').value,
-            descripcion: document.getElementById('cat-descripcion').value
+            nombre,
+            descripcion: document.getElementById('cat-descripcion').value.trim()
         };
         try {
             await Api.createCategoria(data);
-            this.showToast('Categoría creada', 'success');
+            this.showToast('Categoría creada exitosamente', 'success');
             Modals.close('modal-categoria');
             this.loadCategorias();
             this.loadSelectOptions();
@@ -562,11 +606,23 @@ const App = {
 
     async saveProveedor(e) {
         e.preventDefault();
+        const nombre = document.getElementById('prov-nombre').value.trim();
+        if (!nombre) {
+            this.showToast('El nombre o razón social del proveedor es obligatorio', 'error');
+            return;
+        }
+
+        const email = document.getElementById('prov-email').value.trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.showToast('Ingrese un correo electrónico válido para el proveedor', 'error');
+            return;
+        }
+
         const data = {
-            nombre: document.getElementById('prov-nombre').value,
-            telefono: document.getElementById('prov-telefono').value,
-            email: document.getElementById('prov-email').value,
-            direccion: document.getElementById('prov-direccion').value
+            nombre,
+            telefono: document.getElementById('prov-telefono').value.trim(),
+            email,
+            direccion: document.getElementById('prov-direccion').value.trim()
         };
         try {
             await Api.createProveedor(data);
@@ -655,8 +711,19 @@ const App = {
     async saveAjusteLote(e) {
         e.preventDefault();
         const id = document.getElementById('ajuste-lote-id').value;
-        const nuevaCantidad = document.getElementById('ajuste-cantidad').value;
-        const motivo = document.getElementById('ajuste-motivo').value;
+        const rawCant = document.getElementById('ajuste-cantidad').value;
+        const nuevaCantidad = parseInt(rawCant);
+        const motivo = document.getElementById('ajuste-motivo').value.trim();
+
+        if (isNaN(nuevaCantidad) || nuevaCantidad < 0 || Object.is(Number(rawCant), -0)) {
+            this.showToast('La nueva cantidad debe ser un entero mayor o igual a 0 (no se permite -0 ni valores negativos)', 'error');
+            return;
+        }
+
+        if (!motivo) {
+            this.showToast('Debe especificar el motivo del ajuste', 'error');
+            return;
+        }
 
         try {
             await Api.ajustarLote(id, nuevaCantidad, motivo);
@@ -671,16 +738,56 @@ const App = {
 
     async saveEntradaInventario(e) {
         e.preventDefault();
+        const idProveedor = document.getElementById('ent-proveedor').value;
+        const fecha = document.getElementById('ent-fecha').value;
+        const idProducto = document.getElementById('ent-producto').value;
+        const numeroLote = document.getElementById('ent-lote-num').value.trim();
+        const fechaVencimiento = document.getElementById('ent-vencimiento').value;
+        const rawCantidad = document.getElementById('ent-cantidad').value;
+        const rawPrecioCompra = document.getElementById('ent-precio-compra').value;
+
+        if (!idProveedor || parseInt(idProveedor) <= 0) {
+            this.showToast('Debe seleccionar un proveedor válido', 'error');
+            return;
+        }
+
+        if (!idProducto || parseInt(idProducto) <= 0) {
+            this.showToast('Debe seleccionar un producto a ingresar', 'error');
+            return;
+        }
+
+        if (!numeroLote) {
+            this.showToast('El número de lote es obligatorio y no puede estar vacío', 'error');
+            return;
+        }
+
+        if (!fechaVencimiento) {
+            this.showToast('Debe seleccionar la fecha de vencimiento del lote', 'error');
+            return;
+        }
+
+        const cantidad = parseInt(rawCantidad);
+        if (isNaN(cantidad) || cantidad <= 0 || Object.is(Number(rawCantidad), -0)) {
+            this.showToast('La cantidad a ingresar debe ser un número entero mayor a 0 (no se permite 0 ni valores negativos)', 'error');
+            return;
+        }
+
+        const precioCompra = parseFloat(rawPrecioCompra);
+        if (isNaN(precioCompra) || precioCompra <= 0 || Object.is(Number(rawPrecioCompra), -0)) {
+            this.showToast('El precio de compra unitario debe ser mayor a 0 (no se permite 0 ni valores negativos)', 'error');
+            return;
+        }
+
         const data = {
-            idProveedor: document.getElementById('ent-proveedor').value,
-            fecha: document.getElementById('ent-fecha').value,
-            observaciones: document.getElementById('ent-obs').value,
+            idProveedor: parseInt(idProveedor),
+            fecha,
+            observaciones: document.getElementById('ent-obs').value.trim(),
             productos: [{
-                idProducto: document.getElementById('ent-producto').value,
-                numeroLote: document.getElementById('ent-lote-num').value,
-                fechaVencimiento: document.getElementById('ent-vencimiento').value,
-                cantidad: document.getElementById('ent-cantidad').value,
-                precioCompra: document.getElementById('ent-precio-compra').value
+                idProducto: parseInt(idProducto),
+                numeroLote,
+                fechaVencimiento,
+                cantidad,
+                precioCompra
             }]
         };
 
@@ -752,21 +859,50 @@ const App = {
 
     async savePrescripcion(e) {
         e.preventDefault();
+        const numero = document.getElementById('rec-codigo').value.trim();
+        const cliente = document.getElementById('rec-cliente').value.trim();
+        const veterinario = document.getElementById('rec-veterinario').value.trim();
+        const idProducto = document.getElementById('rec-producto').value;
+        const rawCantidad = document.getElementById('rec-cantidad').value;
+
+        if (!numero) {
+            this.showToast('El código / número de receta es obligatorio', 'error');
+            return;
+        }
+        if (!cliente) {
+            this.showToast('El nombre del cliente / tutor es obligatorio', 'error');
+            return;
+        }
+        if (!veterinario) {
+            this.showToast('El nombre del veterinario emisor es obligatorio', 'error');
+            return;
+        }
+        if (!idProducto || parseInt(idProducto) <= 0) {
+            this.showToast('Debe seleccionar un medicamento', 'error');
+            return;
+        }
+
+        const cantidad = parseInt(rawCantidad);
+        if (isNaN(cantidad) || cantidad <= 0 || Object.is(Number(rawCantidad), -0)) {
+            this.showToast('La cantidad prescrita debe ser un número entero mayor a 0 (no se permite 0 ni valores negativos)', 'error');
+            return;
+        }
+
         const data = {
-            numero: document.getElementById('rec-codigo').value,
-            cliente: document.getElementById('rec-cliente').value,
-            veterinario: document.getElementById('rec-veterinario').value,
-            observaciones: document.getElementById('rec-observaciones').value,
+            numero,
+            cliente,
+            veterinario,
+            observaciones: document.getElementById('rec-observaciones').value.trim(),
             detalles: [{
-                idProducto: document.getElementById('rec-producto').value,
-                cantidad: document.getElementById('rec-cantidad').value,
-                indicaciones: document.getElementById('rec-indicaciones').value
+                idProducto: parseInt(idProducto),
+                cantidad,
+                indicaciones: document.getElementById('rec-indicaciones').value.trim()
             }]
         };
 
         try {
             await Api.createPrescripcion(data);
-            this.showToast('Prescripción médica guardada', 'success');
+            this.showToast('Prescripción médica guardada exitosamente', 'success');
             Modals.close('modal-prescripcion');
             this.loadPrescripciones();
         } catch (err) {
@@ -863,11 +999,36 @@ const App = {
 
     async saveUsuario(e) {
         e.preventDefault();
+        const nombre = document.getElementById('usr-nombre').value.trim();
+        const email = document.getElementById('usr-email').value.trim();
+        const password = document.getElementById('usr-password').value;
+        const rolId = document.getElementById('usr-rol').value;
+
+        if (!nombre) {
+            this.showToast('El nombre del usuario es obligatorio', 'error');
+            return;
+        }
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.showToast('Debe ingresar un correo electrónico válido', 'error');
+            return;
+        }
+
+        if (!password || password.length < 4) {
+            this.showToast('La contraseña debe tener al menos 4 caracteres', 'error');
+            return;
+        }
+
+        if (!rolId || parseInt(rolId) <= 0) {
+            this.showToast('Debe seleccionar un rol de acceso válido', 'error');
+            return;
+        }
+
         const data = {
-            nombre: document.getElementById('usr-nombre').value,
-            email: document.getElementById('usr-email').value,
-            password: document.getElementById('usr-password').value,
-            rolId: document.getElementById('usr-rol').value
+            nombre,
+            email,
+            password,
+            rolId: parseInt(rolId)
         };
 
         try {
@@ -901,15 +1062,42 @@ const App = {
 
     async saveConfiguracion(e) {
         e.preventDefault();
+        const nombreVeterinaria = document.getElementById('conf-nombre').value.trim();
+        const email = document.getElementById('conf-email').value.trim();
+        const rawStockMin = document.getElementById('conf-stock-min').value;
+        const rawDiasVence = document.getElementById('conf-dias-vence').value;
+
+        if (!nombreVeterinaria) {
+            this.showToast('El nombre de la veterinaria no puede estar vacío', 'error');
+            return;
+        }
+
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            this.showToast('El correo electrónico de configuración no es válido', 'error');
+            return;
+        }
+
+        const stockMinimoAlerta = parseInt(rawStockMin);
+        if (isNaN(stockMinimoAlerta) || stockMinimoAlerta <= 0 || Object.is(Number(rawStockMin), -0)) {
+            this.showToast('El stock mínimo de alerta general debe ser mayor a 0', 'error');
+            return;
+        }
+
+        const diasAlertaVencimiento = parseInt(rawDiasVence);
+        if (isNaN(diasAlertaVencimiento) || diasAlertaVencimiento <= 0 || Object.is(Number(rawDiasVence), -0)) {
+            this.showToast('Los días de alerta de vencimiento deben ser mayor a 0', 'error');
+            return;
+        }
+
         const data = {
-            nombreVeterinaria: document.getElementById('conf-nombre').value,
-            ruc: document.getElementById('conf-ruc').value,
-            telefono: document.getElementById('conf-telefono').value,
-            email: document.getElementById('conf-email').value,
-            direccion: document.getElementById('conf-direccion').value,
-            monedaSimbolo: document.getElementById('conf-moneda').value,
-            stockMinimoAlerta: document.getElementById('conf-stock-min').value,
-            diasAlertaVencimiento: document.getElementById('conf-dias-vence').value
+            nombreVeterinaria,
+            ruc: document.getElementById('conf-ruc').value.trim(),
+            telefono: document.getElementById('conf-telefono').value.trim(),
+            email,
+            direccion: document.getElementById('conf-direccion').value.trim(),
+            monedaSimbolo: document.getElementById('conf-moneda').value.trim() || 'C$',
+            stockMinimoAlerta,
+            diasAlertaVencimiento
         };
 
         try {
@@ -1052,6 +1240,14 @@ const POS = {
     },
 
     addToCart(product) {
+        if (!product || !product.id) return;
+
+        const precio = Number(product.precioVenta);
+        if (isNaN(precio) || precio <= 0 || Object.is(precio, -0)) {
+            App.showToast(`El producto "${product.nombre}" no tiene un precio de venta válido mayor a 0`, 'error');
+            return;
+        }
+
         if (product.stockTotal <= 0) {
             App.showToast(`No hay stock disponible para ${product.nombre}`, 'error');
             return;
@@ -1071,7 +1267,7 @@ const POS = {
                 id: product.id,
                 codigo: product.codigoBarras || `P-${product.id}`,
                 nombre: product.nombre,
-                precio: Number(product.precioVenta),
+                precio,
                 cantidad: 1,
                 idLote: lote ? lote.id : null,
                 numeroLote: lote ? lote.numeroLote : 'L-AUTO',
@@ -1240,6 +1436,36 @@ const POS = {
             return;
         }
 
+        const totalVenta = this.cart.reduce((s, i) => s + (i.precio * i.cantidad), 0);
+        if (totalVenta <= 0 || isNaN(totalVenta)) {
+            App.showToast('El total de la venta debe ser mayor a 0 para poder registrar el cobro', 'error');
+            return;
+        }
+
+        for (const item of this.cart) {
+            if (!item.cantidad || item.cantidad <= 0 || Object.is(Number(item.cantidad), -0)) {
+                App.showToast(`La cantidad de "${item.nombre}" debe ser mayor a 0`, 'error');
+                return;
+            }
+            if (!item.precio || item.precio <= 0 || Object.is(Number(item.precio), -0)) {
+                App.showToast(`El precio unitario de "${item.nombre}" debe ser mayor a 0`, 'error');
+                return;
+            }
+        }
+
+        const rawPagaCon = document.getElementById('pos-paga-con').value;
+        if (rawPagaCon !== '') {
+            const pagaCon = parseFloat(rawPagaCon);
+            if (isNaN(pagaCon) || pagaCon < 0 || Object.is(Number(rawPagaCon), -0)) {
+                App.showToast('El monto recibido no puede ser negativo ni -0', 'error');
+                return;
+            }
+            if (pagaCon < totalVenta) {
+                App.showToast(`El monto recibido (C$ ${pagaCon.toFixed(2)}) es menor al total a pagar (C$ ${totalVenta.toFixed(2)})`, 'warning');
+                return;
+            }
+        }
+
         const tieneRestringido = this.cart.some(i => i.requierePrescripcion);
         if (tieneRestringido && !this.recetaValidada) {
             App.showToast('¡ALERTA RF-13! Este pedido contiene medicamentos restringidos. Debe ingresar y validar una receta médica activa antes de cobrar.', 'error');
@@ -1247,7 +1473,7 @@ const POS = {
             return;
         }
 
-        const cliente = document.getElementById('pos-cliente').value || 'Cliente General';
+        const cliente = document.getElementById('pos-cliente').value.trim() || 'Cliente General';
         const metodoPago = document.getElementById('pos-metodo-pago').value || 'Efectivo';
 
         const payload = {
@@ -1380,14 +1606,23 @@ const Modals = {
         document.getElementById('modal-producto-title').textContent = 'Nuevo Producto';
         document.getElementById('form-producto').reset();
         document.getElementById('prod-id').value = '';
+        document.getElementById('prod-precio-compra').value = '';
+        document.getElementById('prod-precio-venta').value = '';
+        document.getElementById('prod-stock-min').value = '5';
         this.open('modal-producto');
     },
 
     openCategoriaModal() {
+        document.getElementById('cat-nombre').value = '';
+        document.getElementById('cat-descripcion').value = '';
         this.open('modal-categoria');
     },
 
     openProveedorModal() {
+        document.getElementById('prov-nombre').value = '';
+        document.getElementById('prov-telefono').value = '';
+        document.getElementById('prov-email').value = '';
+        document.getElementById('prov-direccion').value = '';
         this.open('modal-proveedor');
     },
 
@@ -1396,6 +1631,10 @@ const Modals = {
         const vence = new Date();
         vence.setDate(vence.getDate() + 180);
         document.getElementById('ent-vencimiento').value = vence.toISOString().split('T')[0];
+        document.getElementById('ent-lote-num').value = `LOT-${Math.floor(1000 + Math.random() * 9000)}`;
+        document.getElementById('ent-cantidad').value = '10';
+        document.getElementById('ent-precio-compra').value = '';
+        document.getElementById('ent-obs').value = '';
         this.open('modal-entrada');
     },
 

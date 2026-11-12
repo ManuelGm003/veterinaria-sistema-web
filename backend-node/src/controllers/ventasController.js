@@ -1,4 +1,10 @@
 const prisma = require('../config/prisma');
+const {
+    isPositiveNumber,
+    isPositiveInteger,
+    isNonNegativeNumber,
+    isNonEmptyString
+} = require('../utils/validators');
 
 // RF-12 & RF-13 & RF-08: Procesar venta POS con validación de receta médica y descuento automático de stock
 const registrarVenta = async (req, res) => {
@@ -14,7 +20,35 @@ const registrarVenta = async (req, res) => {
         } = req.body;
 
         if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
-            return res.status(400).json({ message: 'La venta debe contener al menos un producto' });
+            return res.status(400).json({ message: 'La venta debe contener al menos un producto.' });
+        }
+
+        // Validar cada ítem del detalle de venta
+        for (let i = 0; i < detalles.length; i++) {
+            const item = detalles[i];
+            const fila = i + 1;
+
+            if (!isPositiveInteger(item.idProducto)) {
+                return res.status(400).json({ message: `Ítem ${fila}: ID de producto inválido.` });
+            }
+
+            if (!isPositiveInteger(item.cantidad)) {
+                return res.status(400).json({ message: `Ítem ${fila}: La cantidad a vender debe ser un número entero mayor a 0 (no se permite 0, -0 ni valores negativos).` });
+            }
+
+            if (!isPositiveNumber(item.precioUnitario)) {
+                return res.status(400).json({ message: `Ítem ${fila}: El precio unitario debe ser un número mayor a 0 (no se permite 0, -0 ni valores negativos).` });
+            }
+
+            if (item.idLote && !isPositiveInteger(item.idLote)) {
+                return res.status(400).json({ message: `Ítem ${fila}: El lote seleccionado es inválido.` });
+            }
+        }
+
+        if (descuento !== undefined && descuento !== null && descuento !== '') {
+            if (!isNonNegativeNumber(descuento)) {
+                return res.status(400).json({ message: 'El descuento debe ser un número mayor o igual a 0 (no se permite -0 ni valores negativos).' });
+            }
         }
 
         // 1. Verificar si algún producto requiere prescripción médica
@@ -25,13 +59,12 @@ const registrarVenta = async (req, res) => {
 
         const productosConRecetaObligatoria = productosEnVenta.filter(p => p.requierePrescripcion);
 
-        let finalPrescripcionId = prescripcionId ? parseInt(prescripcionId) : null;
+        let finalPrescripcionId = prescripcionId && isPositiveInteger(prescripcionId) ? parseInt(prescripcionId) : null;
 
         if (productosConRecetaObligatoria.length > 0) {
-            // Se requiere validación de prescripción médica (RF-13)
             let prescripcionValida = null;
 
-            if (codigoPrescripcion) {
+            if (isNonEmptyString(codigoPrescripcion)) {
                 prescripcionValida = await prisma.prescripcion.findFirst({
                     where: { numero: codigoPrescripcion.trim() }
                 });
@@ -121,18 +154,26 @@ const registrarVenta = async (req, res) => {
                 });
             }
 
-            const descuentoFinal = parseFloat(descuento) || 0;
-            const totalConDescuento = Math.max(0, totalVenta - descuentoFinal);
+            if (totalVenta <= 0) {
+                throw new Error('El importe total de la venta debe ser mayor a 0.');
+            }
+
+            const descuentoFinal = descuento ? parseFloat(descuento) : 0;
+            if (descuentoFinal >= totalVenta) {
+                throw new Error('El descuento no puede ser mayor o igual al total de la venta.');
+            }
+
+            const totalConDescuento = Math.max(0.01, totalVenta - descuentoFinal);
 
             // Crear venta
             const venta = await tx.venta.create({
                 data: {
-                    cliente: cliente || 'Cliente General',
-                    idUsuario: idUsuario ? parseInt(idUsuario) : null,
+                    cliente: isNonEmptyString(cliente) ? cliente.trim() : 'Cliente General',
+                    idUsuario: idUsuario && isPositiveInteger(idUsuario) ? parseInt(idUsuario) : null,
                     prescripcionId: finalPrescripcionId,
                     total: totalConDescuento,
                     descuento: descuentoFinal,
-                    metodoPago: metodoPago || 'Efectivo',
+                    metodoPago: isNonEmptyString(metodoPago) ? metodoPago.trim() : 'Efectivo',
                     estado: 'Completada',
                     detalles: {
                         create: detallesParaInsertar
@@ -213,6 +254,10 @@ const getVentas = async (req, res) => {
 const getVentaById = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de venta inválido' });
+        }
+
         const venta = await prisma.venta.findUnique({
             where: { id },
             include: {
@@ -237,6 +282,9 @@ const getVentaById = async (req, res) => {
 const anularVenta = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de venta inválido' });
+        }
 
         const resultado = await prisma.$transaction(async (tx) => {
             const venta = await tx.venta.findUnique({

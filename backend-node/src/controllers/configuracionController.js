@@ -1,4 +1,9 @@
 const prisma = require('../config/prisma');
+const {
+    isPositiveInteger,
+    isNonEmptyString,
+    isValidEmail
+} = require('../utils/validators');
 
 const getConfiguracion = async (req, res) => {
     try {
@@ -30,35 +35,43 @@ const updateConfiguracion = async (req, res) => {
             monedaSimbolo, stockMinimoAlerta, diasAlertaVencimiento
         } = req.body;
 
-        const config = await prisma.configuracion.findFirst();
-        let actualizado;
+        if (!isNonEmptyString(nombreVeterinaria)) {
+            return res.status(400).json({ message: 'El nombre de la veterinaria no puede estar vacío.' });
+        }
 
+        if (email && isNonEmptyString(email) && !isValidEmail(email)) {
+            return res.status(400).json({ message: 'El correo electrónico de configuración no es válido.' });
+        }
+
+        if (!isPositiveInteger(stockMinimoAlerta)) {
+            return res.status(400).json({ message: 'El stock mínimo de alerta general debe ser un número entero mayor a 0 (mínimo 1).' });
+        }
+
+        if (!isPositiveInteger(diasAlertaVencimiento)) {
+            return res.status(400).json({ message: 'Los días de alerta de vencimiento deben ser un número entero mayor a 0 (mínimo 1).' });
+        }
+
+        const config = await prisma.configuracion.findFirst();
+        const dataSave = {
+            nombreVeterinaria: nombreVeterinaria.trim(),
+            ruc: ruc ? ruc.trim() : null,
+            telefono: telefono ? telefono.trim() : null,
+            email: email && isNonEmptyString(email) ? email.trim() : null,
+            direccion: direccion ? direccion.trim() : null,
+            monedaSimbolo: isNonEmptyString(monedaSimbolo) ? monedaSimbolo.trim() : 'C$',
+            stockMinimoAlerta: parseInt(stockMinimoAlerta),
+            diasAlertaVencimiento: parseInt(diasAlertaVencimiento)
+        };
+
+        let actualizado;
         if (config) {
             actualizado = await prisma.configuracion.update({
                 where: { id: config.id },
-                data: {
-                    nombreVeterinaria,
-                    ruc,
-                    telefono,
-                    email,
-                    direccion,
-                    monedaSimbolo,
-                    stockMinimoAlerta: parseInt(stockMinimoAlerta) || 5,
-                    diasAlertaVencimiento: parseInt(diasAlertaVencimiento) || 30
-                }
+                data: dataSave
             });
         } else {
             actualizado = await prisma.configuracion.create({
-                data: {
-                    nombreVeterinaria,
-                    ruc,
-                    telefono,
-                    email,
-                    direccion,
-                    monedaSimbolo,
-                    stockMinimoAlerta: parseInt(stockMinimoAlerta) || 5,
-                    diasAlertaVencimiento: parseInt(diasAlertaVencimiento) || 30
-                }
+                data: dataSave
             });
         }
 
