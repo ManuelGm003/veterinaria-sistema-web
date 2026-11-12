@@ -3,9 +3,9 @@
  * Handles communication with the Express/Prisma backend
  */
 
-const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-    ? `${window.location.origin}/api`
-    : 'http://localhost:4000/api';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '4000' && window.location.port !== ''
+    ? 'http://localhost:4000/api'
+    : '/api';
 
 const Api = {
     getToken() {

@@ -64,10 +64,14 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`=======================================================`);
-    console.log(`🐾 Servidor Veterinaria corriendo en http://localhost:${PORT}`);
-    console.log(`📦 Prisma ORM conectado exitosamente`);
-    console.log(`=======================================================`);
-});
+// Iniciar servidor localmente (omitir en entorno serverless como Vercel)
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`=======================================================`);
+        console.log(`🐾 Servidor Veterinaria corriendo en http://localhost:${PORT}`);
+        console.log(`📦 Prisma ORM conectado exitosamente`);
+        console.log(`=======================================================`);
+    });
+}
+
+module.exports = app;

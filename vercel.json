@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend-node/src/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "backend-node/prisma/**",
+          "backend-node/node_modules/.prisma/**",
+          "backend-node/node_modules/@prisma/**"
+        ]
+      }
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend-node/src/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/$1"
+    }
+  ]
+}
+
