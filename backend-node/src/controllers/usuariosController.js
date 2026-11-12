@@ -1,5 +1,10 @@
 const prisma = require('../config/prisma');
 const bcrypt = require('bcryptjs');
+const {
+    isPositiveInteger,
+    isNonEmptyString,
+    isValidEmail
+} = require('../utils/validators');
 
 // RF-02: Gestión de usuarios según su rol (Administrador, Cajero, Bodeguero)
 const getUsuarios = async (req, res) => {
@@ -38,20 +43,39 @@ const getRoles = async (req, res) => {
 const createUsuario = async (req, res) => {
     try {
         const { nombre, email, password, rolId } = req.body;
-        if (!nombre || !email || !password || !rolId) {
-            return res.status(400).json({ message: 'Todos los campos son obligatorios' });
+
+        if (!isNonEmptyString(nombre)) {
+            return res.status(400).json({ message: 'El nombre completo es obligatorio y no puede estar vacío.' });
         }
 
-        const existente = await prisma.usuario.findUnique({ where: { email } });
+        if (!isValidEmail(email)) {
+            return res.status(400).json({ message: 'Debe ingresar un correo electrónico válido.' });
+        }
+
+        if (!isNonEmptyString(password) || password.length < 4) {
+            return res.status(400).json({ message: 'La contraseña es obligatoria y debe tener al menos 4 caracteres.' });
+        }
+
+        if (!isPositiveInteger(rolId)) {
+            return res.status(400).json({ message: 'Debe seleccionar un rol válido (no puede ser nulo ni 0).' });
+        }
+
+        const emailTrim = email.trim().toLowerCase();
+        const existente = await prisma.usuario.findUnique({ where: { email: emailTrim } });
         if (existente) {
-            return res.status(400).json({ message: 'Ya existe un usuario con este correo electrónico' });
+            return res.status(400).json({ message: 'Ya existe un usuario registrado con este correo electrónico.' });
+        }
+
+        const rolExistente = await prisma.rol.findUnique({ where: { id: parseInt(rolId) } });
+        if (!rolExistente) {
+            return res.status(400).json({ message: 'El rol seleccionado no existe.' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const nuevo = await prisma.usuario.create({
             data: {
-                nombre,
-                email,
+                nombre: nombre.trim(),
+                email: emailTrim,
                 password: hashedPassword,
                 rolId: parseInt(rolId),
                 estado: true
@@ -77,14 +101,42 @@ const createUsuario = async (req, res) => {
 const updateUsuario = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de usuario inválido' });
+        }
+
         const { nombre, email, password, rolId, estado } = req.body;
 
         const dataUpdate = {};
-        if (nombre) dataUpdate.nombre = nombre;
-        if (email) dataUpdate.email = email;
-        if (rolId) dataUpdate.rolId = parseInt(rolId);
-        if (typeof estado === 'boolean') dataUpdate.estado = estado;
-        if (password && password.trim() !== '') {
+        if (nombre !== undefined) {
+            if (!isNonEmptyString(nombre)) {
+                return res.status(400).json({ message: 'El nombre no puede estar vacío.' });
+            }
+            dataUpdate.nombre = nombre.trim();
+        }
+
+        if (email !== undefined) {
+            if (!isValidEmail(email)) {
+                return res.status(400).json({ message: 'Correo electrónico inválido.' });
+            }
+            dataUpdate.email = email.trim().toLowerCase();
+        }
+
+        if (rolId !== undefined) {
+            if (!isPositiveInteger(rolId)) {
+                return res.status(400).json({ message: 'Rol inválido.' });
+            }
+            dataUpdate.rolId = parseInt(rolId);
+        }
+
+        if (typeof estado === 'boolean') {
+            dataUpdate.estado = estado;
+        }
+
+        if (password && isNonEmptyString(password)) {
+            if (password.length < 4) {
+                return res.status(400).json({ message: 'La contraseña debe tener al menos 4 caracteres.' });
+            }
             dataUpdate.password = await bcrypt.hash(password, 10);
         }
 
@@ -95,7 +147,7 @@ const updateUsuario = async (req, res) => {
         });
 
         res.json({
-            message: 'Usuario actualizado',
+            message: 'Usuario actualizado exitosamente',
             usuario: {
                 id: actualizado.id,
                 nombre: actualizado.nombre,
@@ -112,6 +164,10 @@ const updateUsuario = async (req, res) => {
 const toggleEstadoUsuario = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ message: 'ID de usuario inválido' });
+        }
+
         const user = await prisma.usuario.findUnique({ where: { id } });
         if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 

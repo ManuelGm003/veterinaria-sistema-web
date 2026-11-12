@@ -1,0 +1,229 @@
+================================================================================
+             RESUMEN EJECUTIVO Y TÉCNICO - SISTEMA WEB VETSALUD
+  SISTEMA INTERNO DE GESTIÓN VETERINARIA, INVENTARIOS, POS Y RECETAS MÉDICAS
+================================================================================
+
+1. DESCRIPCIÓN GENERAL DEL SISTEMA
+--------------------------------------------------------------------------------
+VetSalud es una plataforma web completa desarrollada para la administración
+operativa, clínica y comercial de clínicas y farmacias veterinarias. 
+
+El sistema resuelve la problemática de trazabilidad de medicamentos, control
+estricto de fármacos restringidos, semaforización de fechas de vencimiento por lote,
+facturación rápida en Punto de Venta (POS) y cálculo de márgenes comerciales.
+
+Está basado en una arquitectura cliente-servidor desacoplada utilizando:
+- Backend: Node.js con Express y Prisma ORM 7 (motor MariaDB / MySQL).
+- Frontend: HTML5, CSS3 con variables CSS (Modo Oscuro/Claro) y JavaScript Vanilla.
+- Analítica: Chart.js para visualización de métricas en vivo.
+- Base de Datos: MySQL / MariaDB (veterinaria_db) con integridad referencial.
+
+
+================================================================================
+2. MÓDULOS DEL SISTEMA Y FUNCIONALIDADES DETALLADAS
+================================================================================
+
+--------------------------------------------------------------------------------
+MÓDULO 1: SEGURIDAD, AUTENTICACIÓN Y ROLES (RF-01, RF-02)
+--------------------------------------------------------------------------------
+- Autenticación segura mediante JSON Web Tokens (JWT).
+- Encriptación irreversible de contraseñas con bcryptjs (salt de 10 rondas).
+- Control de Acceso Basado en Roles (RBAC) con tres perfiles principales:
+  1. Administrador:
+     - Control total del sistema, reportes financieros, configuración, usuarios,
+       inventarios, catálogo y punto de venta.
+  2. Cajero:
+     - Orientado a la velocidad de facturación.
+     - Operación del Punto de Venta (POS), cobro de tickets, validación estricta
+       de recetas médicas y consulta de catálogo.
+  3. Bodeguero:
+     - Orientado a la logística de almacén.
+     - Registro de entradas de mercadería, trazabilidad por lotes, control de
+       vencimientos y ajustes de stock por merma/daño.
+- Pantalla de Login interactiva con botones de demostración rápida para alternar
+  fácilmente entre roles durante pruebas y presentaciones.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 2: DASHBOARD Y ANALÍTICA EN TIEMPO REAL (RF-16)
+--------------------------------------------------------------------------------
+- Panel central de control para directores y administradores:
+  * Tarjetas KPI Dinámicas:
+    - Ventas acumuladas del día en tiempo real.
+    - Total de productos activos registrados en el catálogo.
+    - Conteo de productos con stock en nivel crítico o inferior al mínimo.
+    - Conteo de lotes con caducidad próxima (< 30 días).
+  * Gráfico de Tendencia de Ventas (Chart.js):
+    - Curva interactiva de ingresos diarios generados durante los últimos 7 días.
+  * Gráfico de Participación por Categorías (Chart.js):
+    - Gráfico de dona que muestra la distribución de productos e inventario.
+  * Centro de Alertas y Notificaciones:
+    - Clasificación por severidad (Crítico, Advertencia, Informativo).
+    - Avisos inmediatos sobre quiebres de inventario y medicamentos por caducar.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 3: PUNTO DE VENTA (POS) Y FACTURACIÓN (RF-08, RF-12)
+--------------------------------------------------------------------------------
+- Terminal de facturación ágil para mostrador:
+  * Buscador Predictivo:
+    - Búsqueda en tiempo real por nombre de producto o escaneo de código de barras.
+    - Agregado rápido con la tecla Enter o selección directa.
+  * Carrito Interactivo:
+    - Control de cantidades sumando/restando unidades con un clic.
+    - Verificación automática de stock máximo en almacén para evitar sobreventas.
+    - Identificación visual de cada producto (Lote asignado, tipo y restricción).
+  * Panel de Cobro y Liquidación:
+    - Selección del método de pago (Efectivo, Tarjeta, Transferencia).
+    - Cálculo dinámico de cambio al ingresar el monto en "Paga con".
+    - Registro de cliente o asignación rápida a "Cliente General".
+  * Emisión de Ticket Térmico (@media print):
+    - Modal emergente con formato listo para impresoras térmicas de 58mm/80mm.
+    - Desglose detallado de ítems, precios unitarios, subtotales, totales,
+      datos fiscales de la veterinaria (RUC, Teléfono) y código de receta asociada.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 4: CONTROL ESTRICTO DE RECETAS MÉDICAS (RF-13)
+--------------------------------------------------------------------------------
+- Verificación obligatoria para fármacos bajo prescripción (antibióticos, anestésicos, etc.):
+  * Detección Automática en el POS:
+    - Al ingresar un fármaco regulado al carrito, el sistema activa un banner
+      de alerta ámbar/rojo de "Medicamento Restringido Detectado".
+  * Bloqueo Preventivo de Venta:
+    - El botón de cobro permanece inhabilitado hasta que se ingrese y valide
+      una prescripción médica activa en el sistema.
+  * Verificador en Vivo de Prescripciones:
+    - Comprueba el código de la receta (ej. REC-892 o REC-101) contra la base de datos.
+    - Valida fecha de emisión, médico veterinario colegiado emisor, tutor de la mascota
+      y estado (Activa / Vencida / Utilizada).
+    - Muestra insignia verde de "AUTORIZADA" o mensaje de rechazo descriptivo.
+  * Trazabilidad Legal:
+    - El ID y código de la receta quedan vinculados permanentemente a la venta y
+      se imprimen en el ticket para auditorías sanitarias.
+  * Módulo de Consulta y Registro de Recetas:
+    - Pantalla para listar, buscar y dar de alta nuevas recetas médicas veterinarias.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 5: CATÁLOGO DE PRODUCTOS, CATEGORÍAS Y PROVEEDORES (RF-03, RF-04, RF-05)
+--------------------------------------------------------------------------------
+- Gestión de Productos (RF-03):
+  * Ficha completa: Nombre, descripción, código de barras, categoría, proveedor,
+    tipo (Medicamento, Alimento, Accesorio, etc.), precio de compra, precio de venta,
+    stock mínimo de seguridad e indicador de requerimiento de receta.
+  * Búsqueda por texto y filtrado instantáneo por categoría.
+  * Altas, modificaciones y bajas lógicas.
+- Gestión de Categorías (RF-04):
+  * Clasificación farmacéutica y comercial (Antibióticos, Vacunas, Antiparasitarios, etc.).
+  * Conteo automático de productos vinculados por categoría.
+- Gestión de Proveedores (RF-05):
+  * Directorio comercial de laboratorios y distribuidores (FarmaVet, NutriPet, etc.).
+  * Almacenamiento de teléfonos, correo electrónico, dirección física y estado.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 6: INVENTARIO, TRAZABILIDAD POR LOTES Y ENTRADAS (RF-06, RF-07, RF-09, RF-11)
+--------------------------------------------------------------------------------
+- Trazabilidad y Control de Lotes (RF-09, RF-11):
+  * Cada partida de medicamento posee su propio número de lote y fecha de vencimiento.
+  * Semáforo Inteligente de Caducidad:
+    - Rojo (Crítico): Vence en menos de 30 días o ya caducó.
+    - Amarillo (Próximo a Vencer): Vence entre 30 y 60 días.
+    - Verde (Óptimo): Con más de 60 días de vida útil restante.
+  * Cálculo dinámico de los días exactos restantes para vencer.
+- Recepción de Mercadería / Entradas (RF-06):
+  * Registro de compras a proveedores con fecha, observaciones y detalles por producto.
+  * Creación y asignación de nuevos lotes al inventario con actualización automática del stock.
+- Ajuste de Mermas y Bajas (RF-07):
+  * Herramienta para regularizar diferencias físicas en bodega.
+  * Registro de motivo justificado (Caducidad, rotura de frasco, extravío o merma).
+- Descuento Transaccional Seguro (RF-08):
+  * Cada venta efectuada en caja descuenta en tiempo real las unidades del lote respectivo.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 7: REPORTES FINANCIEROS Y DE EXISTENCIAS (RF-14, RF-15)
+--------------------------------------------------------------------------------
+- Valoración de Inventario (RF-15):
+  * Inversión Total en Almacén (Valoración a Precio de Compra/Costo).
+  * Valor Total de Venta Proyectado (Valoración a Precio de Venta en Mostrador).
+  * Margen de Utilidad Bruta Estimada (Ganancia proyectada).
+- Reporte Detallado de Ventas (RF-14):
+  * Historial cronológico de tickets emitidos con fecha, cliente, cajero y método de pago.
+  * Filtros de consulta y totales acumulados.
+  * Opción de reimpresión de tickets antiguos con un solo clic.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 8: GESTIÓN DE USUARIOS Y AUDITORÍA (RF-02)
+--------------------------------------------------------------------------------
+- Creación de nuevos usuarios con asignación de correo, nombre y rol específico.
+- Activación y desactivación instantánea de credenciales de acceso.
+- Registro y visualización de la fecha/hora de última conexión de cada empleado.
+
+
+--------------------------------------------------------------------------------
+MÓDULO 9: CONFIGURACIÓN GENERAL DE LA CLÍNICA
+--------------------------------------------------------------------------------
+- Personalización de los datos institucionales:
+  * Nombre de la Veterinaria, RUC o identificación fiscal, teléfono, dirección y email.
+  * Símbolo monetario (C$, $, etc.).
+  * Ajuste de umbrales para las alertas (Días previos para alerta de vencimiento y
+    cantidad mínima para alerta de stock bajo).
+
+
+--------------------------------------------------------------------------------
+MÓDULO 10: EXPERIENCIA DE USUARIO (UI / UX)
+--------------------------------------------------------------------------------
+- Modo Oscuro y Modo Claro conmutable con persistencia en el navegador (localStorage).
+- Diseño completamente responsivo optimizado para PC, monitores táctiles POS y laptops.
+- Notificaciones interactivas tipo "Toast" para avisos de éxito, error y advertencias.
+- Interfaz limpia construida con CSS nativo sin dependencias pesadas de frameworks externos.
+
+
+================================================================================
+3. TABLA DE REQUERIMIENTOS FUNCIONALES (RF-01 AL RF-16)
+================================================================================
+
+| Código | Requerimiento Funcional                       | Módulo / Pantalla              |
+| :----- | :-------------------------------------------- | :------------------------------ |
+| RF-01  | Inicio de sesión y seguridad                  | Login (UI01) / JWT              |
+| RF-02  | Gestión de usuarios y perfiles por rol        | Usuarios / Roles (Admin/Cajero) |
+| RF-03  | Catálogo maestro de productos y medicamentos  | Gestión de Productos            |
+| RF-04  | Clasificación por categorías farmacéuticas    | Categorías                      |
+| RF-05  | Gestión y contacto con proveedores            | Proveedores                     |
+| RF-06  | Registro de entradas de mercadería (Compras)  | Entradas de Inventario          |
+| RF-07  | Ajuste de stock por mermas o roturas          | Modal Ajuste de Lote            |
+| RF-08  | Descuento automático de stock tras cada venta | Backend Transaccional           |
+| RF-09  | Trazabilidad de productos por número de lote  | Inventario y Lotes              |
+| RF-10  | Notificación de productos bajo stock mínimo   | Dashboard / Alertas             |
+| RF-11  | Semáforo de advertencia de vencimientos       | Inventario y Lotes              |
+| RF-12  | Registro y cobro de ventas en Punto de Venta  | Punto de Venta (POS)            |
+| RF-13  | Validación estricta de recetas médicas        | POS / Verificador de Recetas    |
+| RF-14  | Reporte y desglose financiero de ventas       | Reportes                        |
+| RF-15  | Valoración económica del inventario           | Reportes                        |
+| RF-16  | Dashboard con KPIs y gráficos analíticos      | Dashboard Principal             |
+
+
+================================================================================
+4. CREDENCIALES PRECONFIGURADAS PARA DEMOSTRACIÓN
+================================================================================
+
+1. Administrador (Acceso total):
+   - Usuario:     admin@veterinaria.com
+   - Contraseña:  admin123
+
+2. Cajero (Punto de Venta y Validación de Recetas):
+   - Usuario:     cajero@veterinaria.com
+   - Contraseña:  cajero123
+
+3. Bodeguero (Inventario, Lotes y Entradas de Almacén):
+   - Usuario:     bodeguero@veterinaria.com
+   - Contraseña:  bodeguero123
+
+Recetas de prueba precargadas en la base de datos:
+- REC-892 (Dr. Carlos Mora - Tratamiento con Amoxicilina y Meloxicam - ACTIVA)
+- REC-101 (Dra. Ana López  - Tratamiento con Ketamina y Antibióticos - ACTIVA)
+================================================================================
+

@@ -1,4 +1,11 @@
 const prisma = require('../config/prisma');
+const {
+    isPositiveNumber,
+    isPositiveInteger,
+    isNonNegativeInteger,
+    isNonEmptyString,
+    isValidDate
+} = require('../utils/validators');
 
 // RF-06 & RF-09: Entrada de Inventario con asignación obligatoria de lotes y vencimientos
 const registrarEntrada = async (req, res) => {
@@ -6,10 +13,53 @@ const registrarEntrada = async (req, res) => {
         const { idProveedor, fecha, observaciones, productos } = req.body;
 
         if (!productos || !Array.isArray(productos) || productos.length === 0) {
-            return res.status(400).json({ message: 'Se debe incluir al menos un producto en la entrada' });
+            return res.status(400).json({ message: 'Se debe incluir al menos un producto en la entrada.' });
         }
 
-        const totalProductos = productos.reduce((sum, p) => sum + parseInt(p.cantidad || 0), 0);
+        if (idProveedor && !isPositiveInteger(idProveedor)) {
+            return res.status(400).json({ message: 'El proveedor seleccionado es inválido.' });
+        }
+
+        if (fecha && !isValidDate(fecha)) {
+            return res.status(400).json({ message: 'La fecha de recepción no es válida.' });
+        }
+
+        // Validar cada producto de la lista antes de iniciar la transacción
+        for (let i = 0; i < productos.length; i++) {
+            const item = productos[i];
+            const fila = i + 1;
+
+            if (!isPositiveInteger(item.idProducto)) {
+                return res.status(400).json({ message: `Fila ${fila}: Debe seleccionar un producto válido.` });
+            }
+
+            if (!isPositiveInteger(item.cantidad)) {
+                return res.status(400).json({ message: `Fila ${fila}: La cantidad a ingresar debe ser un número entero mayor a 0 (no se permite 0, -0 ni valores negativos).` });
+            }
+
+            if (!isPositiveNumber(item.precioCompra)) {
+                return res.status(400).json({ message: `Fila ${fila}: El precio de compra debe ser un número mayor a 0 (no se permite 0, -0 ni valores negativos).` });
+            }
+
+            if (!isNonEmptyString(item.numeroLote)) {
+                return res.status(400).json({ message: `Fila ${fila}: El número de lote es obligatorio y no puede estar vacío.` });
+            }
+
+            if (!isValidDate(item.fechaVencimiento)) {
+                return res.status(400).json({ message: `Fila ${fila}: La fecha de vencimiento es obligatoria y debe ser una fecha válida.` });
+            }
+
+            if (item.precioVenta !== undefined && item.precioVenta !== null && item.precioVenta !== '') {
+                if (!isPositiveNumber(item.precioVenta)) {
+                    return res.status(400).json({ message: `Fila ${fila}: El precio de venta debe ser un número mayor a 0.` });
+                }
+                if (parseFloat(item.precioVenta) < parseFloat(item.precioCompra)) {
+                    return res.status(400).json({ message: `Fila ${fila}: El nuevo precio de venta no puede ser menor al precio de compra.` });
+                }
+            }
+        }
+
+        const totalProductos = productos.reduce((sum, p) => sum + parseInt(p.cantidad), 0);
 
         // Transacción Prisma para garantizar integridad
         const resultado = await prisma.$transaction(async (tx) => {
@@ -18,7 +68,7 @@ const registrarEntrada = async (req, res) => {
                 data: {
                     fecha: fecha ? new Date(fecha) : new Date(),
                     idProveedor: idProveedor ? parseInt(idProveedor) : null,
-                    observaciones: observaciones || '',
+                    observaciones: observaciones ? observaciones.trim() : '',
                     totalProductos
                 }
             });
@@ -27,18 +77,18 @@ const registrarEntrada = async (req, res) => {
             for (const item of productos) {
                 const idProducto = parseInt(item.idProducto);
                 const cantidad = parseInt(item.cantidad);
-                const precioCompra = parseFloat(item.precioCompra) || 0;
-                const numeroLote = item.numeroLote || `LOT-${Date.now().toString().slice(-4)}`;
-                const fechaVencimiento = item.fechaVencimiento ? new Date(item.fechaVencimiento) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+                const precioCompra = parseFloat(item.precioCompra);
+                const numeroLote = item.numeroLote.trim();
+                const fechaVencimiento = new Date(item.fechaVencimiento);
 
-                // Crear o actualizar lote
+                // Crear lote
                 const nuevoLote = await tx.lote.create({
                     data: {
                         idProducto,
                         numeroLote,
                         fechaVencimiento,
                         cantidad,
-                        estadoDisponible: cantidad > 0
+                        estadoDisponible: true
                     }
                 });
 
@@ -105,7 +155,9 @@ const getLotes = async (req, res) => {
     try {
         const { idProducto } = req.query;
         const whereClause = { estadoDisponible: true };
-        if (idProducto) whereClause.idProducto = parseInt(idProducto);
+        if (idProducto && isPositiveInteger(idProducto)) {
+            whereClause.idProducto = parseInt(idProducto);
+        }
 
         const lotes = await prisma.lote.findMany({
             where: whereClause,
@@ -142,12 +194,21 @@ const getLotes = async (req, res) => {
 const ajustarLote = async (req, res) => {
     try {
         const idLote = parseInt(req.params.id);
+        if (!isPositiveInteger(idLote)) {
+            return res.status(400).json({ message: 'ID de lote inválido' });
+        }
+
         const { nuevaCantidad, motivo } = req.body;
 
-        const cant = parseInt(nuevaCantidad);
-        if (isNaN(cant) || cant < 0) {
-            return res.status(400).json({ message: 'La nueva cantidad debe ser un número entero mayor o igual a 0' });
+        if (!isNonNegativeInteger(nuevaCantidad)) {
+            return res.status(400).json({ message: 'La nueva cantidad debe ser un número entero mayor o igual a 0 (no se permite -0 ni valores negativos).' });
         }
+
+        if (!isNonEmptyString(motivo)) {
+            return res.status(400).json({ message: 'Debe especificar el motivo del ajuste de inventario.' });
+        }
+
+        const cant = parseInt(nuevaCantidad);
 
         const loteActualizado = await prisma.lote.update({
             where: { id: idLote },
@@ -161,7 +222,7 @@ const ajustarLote = async (req, res) => {
         res.json({
             message: 'Stock del lote ajustado correctamente',
             lote: loteActualizado,
-            motivo: motivo || 'Ajuste operativo'
+            motivo: motivo.trim()
         });
     } catch (error) {
         res.status(500).json({ error: error.message });

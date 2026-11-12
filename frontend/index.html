@@ -819,11 +819,11 @@
                 </div>
                 <div class="form-group">
                   <label>Alerta de Stock Mínimo por Defecto:</label>
-                  <input type="number" id="conf-stock-min" class="form-control" value="5">
+                  <input type="number" id="conf-stock-min" class="form-control" min="1" required value="5">
                 </div>
                 <div class="form-group">
                   <label>Días para Alerta de Vencimiento:</label>
-                  <input type="number" id="conf-dias-vence" class="form-control" value="30">
+                  <input type="number" id="conf-dias-vence" class="form-control" min="1" required value="30">
                 </div>
               </div>
 
@@ -904,16 +904,16 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Precio Compra:</label>
-              <input type="number" step="0.01" id="prod-precio-compra" class="form-control" value="0.00">
+              <label>Precio Compra (C$):</label>
+              <input type="number" step="0.01" min="0.01" id="prod-precio-compra" class="form-control" required placeholder="Ej: 50.00">
             </div>
             <div class="form-group">
-              <label>Precio Venta:</label>
-              <input type="number" step="0.01" id="prod-precio-venta" class="form-control" required value="0.00">
+              <label>Precio Venta (C$):</label>
+              <input type="number" step="0.01" min="0.01" id="prod-precio-venta" class="form-control" required placeholder="Ej: 75.00">
             </div>
             <div class="form-group">
               <label>Stock Mínimo Alerta:</label>
-              <input type="number" id="prod-stock-min" class="form-control" value="5">
+              <input type="number" min="1" id="prod-stock-min" class="form-control" required value="5">
             </div>
           </div>
           <div class="form-group" style="margin-top: 10px;">
@@ -1037,11 +1037,11 @@
           <div class="form-row">
             <div class="form-group">
               <label>Cantidad a Ingresar:</label>
-              <input type="number" id="ent-cantidad" class="form-control" required min="1" value="10">
+              <input type="number" id="ent-cantidad" class="form-control" required min="1" placeholder="Ej: 10">
             </div>
             <div class="form-group">
-              <label>Precio Compra Unitario:</label>
-              <input type="number" step="0.01" id="ent-precio-compra" class="form-control" value="0.00">
+              <label>Precio Compra Unitario (C$):</label>
+              <input type="number" step="0.01" min="0.01" id="ent-precio-compra" class="form-control" required placeholder="Ej: 45.00">
             </div>
           </div>
         </div>
@@ -1119,7 +1119,7 @@
             </div>
             <div class="form-group">
               <label>Cantidad Dosis:</label>
-              <input type="number" id="rec-cantidad" class="form-control" value="1">
+              <input type="number" id="rec-cantidad" class="form-control" required min="1" value="1">
             </div>
           </div>
           <div class="form-group">

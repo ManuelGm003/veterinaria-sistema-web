@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { isNonEmptyString, isPositiveInteger } = require('../utils/validators');
 
 // Registrar una prescripción médica
 const crearPrescripcion = async (req, res) => {
@@ -12,10 +13,10 @@ const crearPrescripcion = async (req, res) => {
         } = req.body;
 
         // Validar campos obligatorios
-        if (!numero_receta || !cedula_cliente ||
-            !nombre_paciente || !fecha_emision) {
+        if (!isNonEmptyString(numero_receta) || !isNonEmptyString(cedula_cliente) ||
+            !isNonEmptyString(nombre_paciente) || !fecha_emision) {
             return res.status(400).json({
-                mensaje: 'Faltan datos obligatorios'
+                mensaje: 'Todos los datos obligatorios deben ser proporcionados y no pueden estar vacíos.'
             });
         }
 
@@ -27,9 +28,9 @@ const crearPrescripcion = async (req, res) => {
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *`,
             [
-                numero_receta,
-                cedula_cliente,
-                nombre_paciente,
+                numero_receta.trim(),
+                cedula_cliente.trim(),
+                nombre_paciente.trim(),
                 fecha_emision,
                 fecha_vencimiento || null
             ]
@@ -70,9 +71,14 @@ const obtenerPrescripciones = async (req, res) => {
 // Consultar una prescripción por ID
 const obtenerPrescripcionPorId = async (req, res) => {
     try {
+        const id = parseInt(req.params.id);
+        if (!isPositiveInteger(id)) {
+            return res.status(400).json({ mensaje: 'ID de prescripción inválido' });
+        }
+
         const resultado = await db.query(
             'SELECT * FROM prescripcion WHERE id = $1',
-            [req.params.id]
+            [id]
         );
 
         if (resultado.rows.length === 0) {
