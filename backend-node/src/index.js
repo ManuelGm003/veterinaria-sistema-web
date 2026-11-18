@@ -40,6 +40,9 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/configuracion', configuracionRoutes);
 
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+})
 // Endpoint de estado del servidor
 app.get('/api/health', (req, res) => {
     res.json({
