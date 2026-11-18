@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Opción A: Reemplaza las primeras 2 líneas de historialController.js por esta importación:
+const prisma = require('../db'); // o donde tengas tu cliente de Prisma configurado
 
 // Registrar una nueva entrada en el historial clínico
 const crearHistorial = async (req, res) => {
