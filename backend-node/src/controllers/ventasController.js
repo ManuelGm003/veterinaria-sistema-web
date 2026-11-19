@@ -6,7 +6,7 @@ const {
     isNonEmptyString
 } = require('../utils/validators');
 
-// RF-12 & RF-13 & RF-08: Procesar venta POS con validación de receta médica y descuento automático de stock
+// RF-12 & RF-13 & RF-08: Procesar venta POS con validación de receta médica, lotes y descuento automático de stock
 const registrarVenta = async (req, res) => {
     try {
         const {
@@ -83,20 +83,49 @@ const registrarVenta = async (req, res) => {
                 });
             }
 
-            if (prescripcionValida.estado === 'Vencida') {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            if (prescripcionValida.estado === 'Vencida' || (prescripcionValida.fechaVencimiento && new Date(prescripcionValida.fechaVencimiento) < hoy)) {
                 return res.status(400).json({
-                    error: 'Prescripción no válida',
-                    mensaje: `La prescripción ${prescripcionValida.numero} se encuentra vencida.`
+                    error: 'Prescripción vencida',
+                    mensaje: `La prescripción médica ${prescripcionValida.numero} se encuentra vencida.`
+                });
+            }
+
+            if (prescripcionValida.estado === 'Utilizada') {
+                return res.status(400).json({
+                    error: 'Prescripción utilizada',
+                    mensaje: `La prescripción médica ${prescripcionValida.numero} ya fue utilizada previamente.`
+                });
+            }
+
+            if (prescripcionValida.estado === 'ANULADA' || prescripcionValida.estado === 'Anulada') {
+                return res.status(400).json({
+                    error: 'Prescripción anulada',
+                    mensaje: `La prescripción médica ${prescripcionValida.numero} se encuentra anulada.`
+                });
+            }
+
+            if (prescripcionValida.estado !== 'Activa') {
+                return res.status(400).json({
+                    error: 'Prescripción no activa',
+                    mensaje: `La prescripción médica ${prescripcionValida.numero} se encuentra en estado no válido: ${prescripcionValida.estado}.`
                 });
             }
 
             finalPrescripcionId = prescripcionValida.id;
         }
 
-        // 2. Transacción de venta con descuento automático de inventario (RF-08)
+        // Usuario que realiza la venta: preferir el usuario autenticado del token
+        const usuarioVentaId = req.usuario?.id || (idUsuario && isPositiveInteger(idUsuario) ? parseInt(idUsuario) : null);
+
+        // 2. Transacción de venta con descuento automático de inventario y bloqueo de concurrencia
         const resultadoVenta = await prisma.$transaction(async (tx) => {
             let totalVenta = 0;
             const detallesParaInsertar = [];
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
 
             for (const item of detalles) {
                 const idProducto = parseInt(item.idProducto);
@@ -109,31 +138,51 @@ const registrarVenta = async (req, res) => {
                     throw new Error(`Producto con ID ${idProducto} no encontrado`);
                 }
 
-                // Si no se envió un lote específico, seleccionar el lote disponible más próximo a vencer (FIFO / FEFO)
+                // Si no se envió un lote específico, seleccionar el lote disponible más próximo a vencer no caducado (FIFO / FEFO)
                 if (!idLote) {
                     const loteDisponible = await tx.lote.findFirst({
                         where: {
                             idProducto,
                             estadoDisponible: true,
-                            cantidad: { gte: cantidad }
+                            cantidad: { gte: cantidad },
+                            fechaVencimiento: { gte: hoy }
                         },
                         orderBy: { fechaVencimiento: 'asc' }
                     });
 
                     if (!loteDisponible) {
-                        throw new Error(`Stock insuficiente en lotes disponibles para el producto "${producto.nombre}". Solicitado: ${cantidad}`);
+                        throw new Error(`Stock insuficiente o sin lotes vigentes disponibles para el producto "${producto.nombre}". Solicitado: ${cantidad}`);
                     }
                     idLote = loteDisponible.id;
                 }
 
-                // Verificar stock del lote
-                const loteActual = await tx.lote.findUnique({ where: { id: idLote } });
-                if (!loteActual || loteActual.cantidad < cantidad) {
-                    throw new Error(`Stock insuficiente en el lote ${loteActual ? loteActual.numeroLote : ''} para "${producto.nombre}". Disponible: ${loteActual ? loteActual.cantidad : 0}`);
+                // Bloqueo pesimista de fila en MySQL / InnoDB para evitar sobreventas concurrentes
+                const lockedRows = await tx.$queryRaw`SELECT id, id_producto AS idProducto, numero_lote AS numeroLote, fecha_vencimiento AS fechaVencimiento, cantidad, estado_disponible AS estadoDisponible FROM lote WHERE id = ${idLote} FOR UPDATE`;
+
+                if (!lockedRows || lockedRows.length === 0) {
+                    throw new Error(`El lote con ID ${idLote} no existe en la base de datos.`);
+                }
+
+                const loteActual = lockedRows[0];
+
+                // Validación 1: El lote debe pertenecer obligatoriamente al producto solicitado
+                if (Number(loteActual.idProducto) !== idProducto) {
+                    throw new Error(`El lote ${loteActual.numeroLote} no pertenece al producto "${producto.nombre}".`);
+                }
+
+                // Validación 2: El lote no debe estar vencido
+                if (new Date(loteActual.fechaVencimiento) < hoy) {
+                    const fVencStr = new Date(loteActual.fechaVencimiento).toISOString().split('T')[0];
+                    throw new Error(`El lote ${loteActual.numeroLote} de "${producto.nombre}" está vencido (${fVencStr}). No se permite la venta de productos caducados.`);
+                }
+
+                // Validación 3: Stock suficiente en el lote
+                if (Number(loteActual.cantidad) < cantidad || !loteActual.estadoDisponible) {
+                    throw new Error(`Stock insuficiente en el lote ${loteActual.numeroLote} para "${producto.nombre}". Solicitado: ${cantidad}, Disponible: ${loteActual.cantidad}`);
                 }
 
                 // Descontar del lote
-                const nuevaCantidadLote = loteActual.cantidad - cantidad;
+                const nuevaCantidadLote = Number(loteActual.cantidad) - cantidad;
                 await tx.lote.update({
                     where: { id: idLote },
                     data: {
@@ -165,11 +214,11 @@ const registrarVenta = async (req, res) => {
 
             const totalConDescuento = Math.max(0.01, totalVenta - descuentoFinal);
 
-            // Crear venta
+            // Crear registro de venta con sus detalles
             const venta = await tx.venta.create({
                 data: {
                     cliente: isNonEmptyString(cliente) ? cliente.trim() : 'Cliente General',
-                    idUsuario: idUsuario && isPositiveInteger(idUsuario) ? parseInt(idUsuario) : null,
+                    idUsuario: usuarioVentaId,
                     prescripcionId: finalPrescripcionId,
                     total: totalConDescuento,
                     descuento: descuentoFinal,
@@ -191,7 +240,7 @@ const registrarVenta = async (req, res) => {
                 }
             });
 
-            // Si se usó una prescripción, actualizar su estado a Utilizada
+            // Si se usó una prescripción, marcarla como Utilizada
             if (finalPrescripcionId) {
                 await tx.prescripcion.update({
                     where: { id: finalPrescripcionId },
@@ -214,7 +263,7 @@ const registrarVenta = async (req, res) => {
 
 const getVentas = async (req, res) => {
     try {
-        const { fechaInicio, fechaFin, cliente } = req.query;
+        const { fechaInicio, fechaFin, cliente, metodoPago } = req.query;
         const whereClause = {};
 
         if (fechaInicio && fechaFin) {
@@ -226,6 +275,10 @@ const getVentas = async (req, res) => {
 
         if (cliente) {
             whereClause.cliente = { contains: cliente };
+        }
+
+        if (metodoPago) {
+            whereClause.metodoPago = metodoPago;
         }
 
         const ventas = await prisma.venta.findMany({
@@ -279,6 +332,7 @@ const getVentaById = async (req, res) => {
     }
 };
 
+// RF-08 & RF-12: Anulación segura de ventas con devolución de existencias
 const anularVenta = async (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -306,6 +360,14 @@ const anularVenta = async (req, res) => {
                         }
                     });
                 }
+            }
+
+            // Si la venta tenía prescripción asociada, reactivarla
+            if (venta.prescripcionId) {
+                await tx.prescripcion.update({
+                    where: { id: venta.prescripcionId },
+                    data: { estado: 'Activa' }
+                });
             }
 
             // Marcar venta como anulada

@@ -10,17 +10,16 @@ const {
     obtenerPrescripcionesPorEstado,
     anularPrescripcion
 } = require('../controllers/prescripcionesController');
+const { verificarToken, permitirRoles } = require('../middlewares/authMiddleware');
 
-// Rutas originales de tu compañero (Intactas)
-router.get('/validar/:codigo', validarPrescripcion);
-router.get('/', getPrescripciones);
-router.post('/', createPrescripcion);
-router.put('/:id', updatePrescripcion);
-router.delete('/:id', deletePrescripcion);
+router.get('/validar/:codigo', verificarToken, permitirRoles('Administrador', 'Cajero'), validarPrescripcion);
+router.get('/', verificarToken, permitirRoles('Administrador', 'Cajero'), getPrescripciones);
+router.post('/', verificarToken, permitirRoles('Administrador'), createPrescripcion);
+router.put('/:id', verificarToken, permitirRoles('Administrador'), updatePrescripcion);
+router.delete('/:id', verificarToken, permitirRoles('Administrador'), deletePrescripcion);
 
-// Tus rutas nuevas agregadas
-router.get('/mascota/:mascotaId', obtenerPrescripcionesPorMascota);
-router.get('/estado/:estado', obtenerPrescripcionesPorEstado);
-router.put('/anular/:id', anularPrescripcion);
+router.get('/mascota/:mascotaId', verificarToken, permitirRoles('Administrador', 'Cajero'), obtenerPrescripcionesPorMascota);
+router.get('/estado/:estado', verificarToken, permitirRoles('Administrador', 'Cajero'), obtenerPrescripcionesPorEstado);
+router.put('/anular/:id', verificarToken, permitirRoles('Administrador'), anularPrescripcion);
 
 module.exports = router;

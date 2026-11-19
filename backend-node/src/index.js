@@ -15,6 +15,8 @@ const prescripcionesRoutes = require('./routes/prescripcionesRoutes');
 const usuariosRoutes = require('./routes/usuariosRoutes');
 const reportesRoutes = require('./routes/reportesRoutes');
 const configuracionRoutes = require('./routes/configuracionRoutes');
+const mascotasRoutes = require('./routes/mascotasRoutes');
+const historialRoutes = require('./routes/historialRoutes');
 
 // Crear aplicación Express
 const app = express();
@@ -39,10 +41,9 @@ app.use('/api/prescripciones', prescripcionesRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/configuracion', configuracionRoutes);
+app.use('/api/mascotas', mascotasRoutes);
+app.use('/api/historial', historialRoutes);
 
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-})
 // Endpoint de estado del servidor
 app.get('/api/health', (req, res) => {
     res.json({
@@ -67,8 +68,8 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-// Iniciar servidor localmente (omitir en entorno serverless como Vercel)
-if (!process.env.VERCEL) {
+// Iniciar servidor localmente cuando se ejecuta directamente (omitir en tests o serverless como Vercel)
+if (require.main === module && !process.env.VERCEL) {
     app.listen(PORT, () => {
         console.log(`=======================================================`);
         console.log(`🐾 Servidor Veterinaria corriendo en http://localhost:${PORT}`);

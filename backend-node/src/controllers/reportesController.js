@@ -3,14 +3,19 @@ const prisma = require('../config/prisma');
 // RF-14: Reportes de Ventas
 const getReporteVentas = async (req, res) => {
     try {
-        const { fechaInicio, fechaFin, metodoPago } = req.query;
-        const whereClause = { estado: 'Completada' };
+        const { fechaInicio, fechaFin, metodoPago, estado } = req.query;
+        const whereClause = {};
 
-        if (fechaInicio && fechaFin) {
-            whereClause.fecha = {
-                gte: new Date(fechaInicio),
-                lte: new Date(new Date(fechaFin).setHours(23, 59, 59))
-            };
+        if (estado) {
+            whereClause.estado = estado;
+        } else {
+            whereClause.estado = 'Completada';
+        }
+
+        if (fechaInicio || fechaFin) {
+            whereClause.fecha = {};
+            if (fechaInicio) whereClause.fecha.gte = new Date(fechaInicio);
+            if (fechaFin) whereClause.fecha.lte = new Date(new Date(fechaFin).setHours(23, 59, 59, 999));
         }
 
         if (metodoPago) {
