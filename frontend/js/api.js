@@ -220,6 +220,41 @@ const Api = {
             method: 'PUT',
             body: JSON.stringify(data)
         });
+    },
+
+    // 12. Mascotas e Historial Clínico
+    async getMascotas(search = '') {
+        const query = search ? `?search=${encodeURIComponent(search)}` : '';
+        return this.request(`/mascotas${query}`);
+    },
+
+    async getMascotaById(id) {
+        return this.request(`/mascotas/${id}`);
+    },
+
+    async createMascota(data) {
+        return this.request('/mascotas', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateMascota(id, data) {
+        return this.request(`/mascotas/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async crearHistorial(data) {
+        return this.request('/historial', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async getHistorialPorMascota(mascotaId) {
+        return this.request(`/historial/mascota/${mascotaId}`);
     }
 };
 

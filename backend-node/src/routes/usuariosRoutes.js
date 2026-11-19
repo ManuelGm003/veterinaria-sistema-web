@@ -7,6 +7,10 @@ const {
     updateUsuario,
     toggleEstadoUsuario
 } = require('../controllers/usuariosController');
+const { verificarToken, permitirRoles } = require('../middlewares/authMiddleware');
+
+// Solo Administrador puede gestionar usuarios y ver roles
+router.use(verificarToken, permitirRoles('Administrador'));
 
 router.get('/', getUsuarios);
 router.get('/roles', getRoles);

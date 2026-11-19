@@ -59,6 +59,53 @@ const App = {
         if (overlay) overlay.style.display = 'flex';
     },
 
+    rolePermissions: {
+        'Administrador': ['dashboard', 'pos', 'productos', 'categorias', 'proveedores', 'inventario', 'prescripciones', 'reportes', 'usuarios', 'configuracion'],
+        'Cajero': ['dashboard', 'pos', 'prescripciones', 'productos'],
+        'Bodeguero': ['dashboard', 'inventario', 'productos', 'categorias', 'proveedores']
+    },
+
+    canAccess(sectionId) {
+        if (!this.currentUser) return false;
+        const role = this.currentUser.rol || 'Administrador';
+        const allowed = this.rolePermissions[role] || this.rolePermissions['Administrador'];
+        return allowed.includes(sectionId);
+    },
+
+    applyRolePermissions() {
+        if (!this.currentUser) return;
+        const role = this.currentUser.rol || 'Administrador';
+        const allowed = this.rolePermissions[role] || this.rolePermissions['Administrador'];
+
+        // Adaptar visibilidad de enlaces en el menú lateral
+        document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+            const sec = item.dataset.section;
+            if (sec && !allowed.includes(sec)) {
+                item.style.display = 'none';
+            } else if (sec) {
+                item.style.display = 'flex';
+            }
+        });
+
+        // Controles de botones según rol (como refuerzo de interfaz, no la única protección)
+        const btnNuevaEntrada = document.getElementById('btn-nueva-entrada');
+        const btnNuevoProducto = document.getElementById('btn-nuevo-producto');
+        const btnNuevaCategoria = document.getElementById('btn-nueva-categoria');
+        const btnNuevoProveedor = document.getElementById('btn-nuevo-proveedor');
+
+        if (role === 'Cajero') {
+            if (btnNuevaEntrada) btnNuevaEntrada.style.display = 'none';
+            if (btnNuevoProducto) btnNuevoProducto.style.display = 'none';
+            if (btnNuevaCategoria) btnNuevaCategoria.style.display = 'none';
+            if (btnNuevoProveedor) btnNuevoProveedor.style.display = 'none';
+        } else if (role === 'Bodeguero') {
+            if (btnNuevaEntrada) btnNuevaEntrada.style.display = '';
+            if (btnNuevoProducto) btnNuevoProducto.style.display = '';
+            if (btnNuevaCategoria) btnNuevaCategoria.style.display = '';
+            if (btnNuevoProveedor) btnNuevoProveedor.style.display = '';
+        }
+    },
+
     showMainApp() {
         const overlay = document.getElementById('login-overlay');
         if (overlay) overlay.style.display = 'none';
@@ -71,17 +118,13 @@ const App = {
             const initials = this.currentUser.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
             document.getElementById('sidebar-avatar').textContent = initials || 'VS';
 
-            // Rol permissions adjustment (Bodeguero / Cajero UI tweaks)
-            const navUsuarios = document.getElementById('nav-item-usuarios');
-            if (navUsuarios && this.currentUser.rol === 'Cajero') {
-                navUsuarios.style.display = 'none';
-            } else if (navUsuarios) {
-                navUsuarios.style.display = 'flex';
-            }
+            // Rol permissions adjustment (RBAC en navegación y botones)
+            this.applyRolePermissions();
         }
 
         // Initial data loads
-        this.navigateTo('dashboard');
+        const initialSection = this.canAccess('dashboard') ? 'dashboard' : (this.rolePermissions[this.currentUser?.rol] || ['dashboard'])[0];
+        this.navigateTo(initialSection);
         this.loadDashboardData();
         this.loadSelectOptions();
     },
@@ -124,6 +167,13 @@ const App = {
     },
 
     navigateTo(sectionId) {
+        if (!this.canAccess(sectionId)) {
+            const role = this.currentUser?.rol || 'Usuario';
+            this.showToast(`Acceso denegado: El perfil "${role}" no tiene permisos para acceder al módulo "${sectionId}".`, 'warning');
+            const allowed = this.rolePermissions[role] || ['dashboard'];
+            sectionId = allowed[0] || 'dashboard';
+        }
+
         this.currentSection = sectionId;
 
         // Highlight nav item

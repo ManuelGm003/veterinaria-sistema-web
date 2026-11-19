@@ -25,7 +25,8 @@ const validarPrescripcion = async (req, res) => {
             include: {
                 detalles: {
                     include: { producto: true }
-                }
+                },
+                mascota: true
             }
         });
 
@@ -36,10 +37,39 @@ const validarPrescripcion = async (req, res) => {
             });
         }
 
-        if (prescripcion.estado === 'Vencida' || prescripcion.estado === 'Utilizada' || prescripcion.estado === 'ANULADA') {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        // Comprobar si está vencida por fecha
+        const estaVencidaPorFecha = prescripcion.fechaVencimiento && new Date(prescripcion.fechaVencimiento) < hoy;
+
+        if (prescripcion.estado === 'Vencida' || estaVencidaPorFecha) {
+            if (prescripcion.estado !== 'Vencida') {
+                await prisma.prescripcion.update({
+                    where: { id: prescripcion.id },
+                    data: { estado: 'Vencida' }
+                });
+                prescripcion.estado = 'Vencida';
+            }
             return res.status(400).json({
                 valido: false,
-                mensaje: `La prescripción médica "${codigo}" se encuentra en estado: ${prescripcion.estado}.`,
+                mensaje: `La prescripción médica "${codigo}" se encuentra vencida (fecha límite: ${prescripcion.fechaVencimiento ? new Date(prescripcion.fechaVencimiento).toISOString().split('T')[0] : 'No definida'}).`,
+                prescripcion
+            });
+        }
+
+        if (prescripcion.estado === 'Utilizada') {
+            return res.status(400).json({
+                valido: false,
+                mensaje: `La prescripción médica "${codigo}" ya fue utilizada previamente.`,
+                prescripcion
+            });
+        }
+
+        if (prescripcion.estado === 'ANULADA' || prescripcion.estado === 'Anulada') {
+            return res.status(400).json({
+                valido: false,
+                mensaje: `La prescripción médica "${codigo}" se encuentra anulada.`,
                 prescripcion
             });
         }
@@ -61,7 +91,7 @@ const getPrescripciones = async (req, res) => {
         const whereClause = {};
 
         if (estado) {
-            whereClause.estado = estado.toUpperCase();
+            whereClause.estado = estado;
         }
 
         if (search) {
@@ -79,13 +109,27 @@ const getPrescripciones = async (req, res) => {
                 detalles: {
                     include: { producto: true }
                 },
+                mascota: true,
                 ventas: {
                     select: { id: true, total: true, fecha: true }
                 }
             },
             orderBy: { fecha: 'desc' }
         });
-        res.json(prescripciones);
+
+        // Actualizar dinámicamente estado de vencimiento si aplica
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        const formateadas = prescripciones.map(p => {
+            const vencidaPorFecha = p.fechaVencimiento && new Date(p.fechaVencimiento) < hoy;
+            return {
+                ...p,
+                esVencida: p.estado === 'Vencida' || vencidaPorFecha
+            };
+        });
+
+        res.json(formateadas);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -93,7 +137,7 @@ const getPrescripciones = async (req, res) => {
 
 const createPrescripcion = async (req, res) => {
     try {
-        const { numero, fecha, cliente, veterinario, observaciones, detalles } = req.body;
+        const { numero, fecha, fechaVencimiento, mascotaId, cliente, veterinario, observaciones, detalles } = req.body;
 
         if (!isNonEmptyString(numero)) {
             return res.status(400).json({ message: 'El código / número de receta es obligatorio y no puede estar vacío.' });
@@ -109,6 +153,22 @@ const createPrescripcion = async (req, res) => {
 
         if (fecha && !isValidDate(fecha)) {
             return res.status(400).json({ message: 'La fecha de la prescripción no es válida.' });
+        }
+
+        if (fechaVencimiento && !isValidDate(fechaVencimiento)) {
+            return res.status(400).json({ message: 'La fecha de vencimiento de la prescripción no es válida.' });
+        }
+
+        let parsedMascotaId = null;
+        if (mascotaId !== undefined && mascotaId !== null && mascotaId !== '') {
+            if (!isPositiveInteger(mascotaId)) {
+                return res.status(400).json({ message: 'El ID de la mascota es inválido.' });
+            }
+            parsedMascotaId = parseInt(mascotaId);
+            const mascota = await prisma.mascota.findUnique({ where: { id: parsedMascotaId } });
+            if (!mascota) {
+                return res.status(404).json({ message: `La mascota con ID ${parsedMascotaId} no existe en el sistema.` });
+            }
         }
 
         const existe = await prisma.prescripcion.findUnique({ where: { numero: numero.trim() } });
@@ -138,10 +198,22 @@ const createPrescripcion = async (req, res) => {
             }
         }
 
+        const fechaEmision = fecha ? new Date(fecha) : new Date();
+        let fechaVenc = null;
+        if (fechaVencimiento) {
+            fechaVenc = new Date(fechaVencimiento);
+        } else {
+            // Por defecto, vigencia legal de 30 días si no se especifica
+            fechaVenc = new Date(fechaEmision.getTime());
+            fechaVenc.setDate(fechaVenc.getDate() + 30);
+        }
+
         const nueva = await prisma.prescripcion.create({
             data: {
                 numero: numero.trim(),
-                fecha: fecha ? new Date(fecha) : new Date(),
+                fecha: fechaEmision,
+                fechaVencimiento: fechaVenc,
+                mascotaId: parsedMascotaId,
                 cliente: cliente.trim(),
                 veterinario: veterinario.trim(),
                 observaciones: observaciones ? observaciones.trim() : '',
@@ -153,7 +225,8 @@ const createPrescripcion = async (req, res) => {
             include: {
                 detalles: {
                     include: { producto: true }
-                }
+                },
+                mascota: true
             }
         });
 
@@ -174,7 +247,7 @@ const updatePrescripcion = async (req, res) => {
             return res.status(400).json({ message: 'ID de prescripción inválido' });
         }
 
-        const { cliente, veterinario, observaciones, estado } = req.body;
+        const { cliente, veterinario, observaciones, estado, fechaVencimiento, mascotaId } = req.body;
         const dataUpdate = {};
 
         if (cliente !== undefined) {
@@ -202,9 +275,31 @@ const updatePrescripcion = async (req, res) => {
             dataUpdate.estado = estado.trim();
         }
 
+        if (fechaVencimiento !== undefined) {
+            if (fechaVencimiento && !isValidDate(fechaVencimiento)) {
+                return res.status(400).json({ message: 'Fecha de vencimiento inválida.' });
+            }
+            dataUpdate.fechaVencimiento = fechaVencimiento ? new Date(fechaVencimiento) : null;
+        }
+
+        if (mascotaId !== undefined) {
+            if (mascotaId !== null && mascotaId !== '' && !isPositiveInteger(mascotaId)) {
+                return res.status(400).json({ message: 'ID de mascota inválido.' });
+            }
+            if (mascotaId) {
+                const mascota = await prisma.mascota.findUnique({ where: { id: parseInt(mascotaId) } });
+                if (!mascota) return res.status(404).json({ message: 'La mascota especificada no existe.' });
+            }
+            dataUpdate.mascotaId = mascotaId ? parseInt(mascotaId) : null;
+        }
+
         const actualizada = await prisma.prescripcion.update({
             where: { id },
-            data: dataUpdate
+            data: dataUpdate,
+            include: {
+                detalles: { include: { producto: true } },
+                mascota: true
+            }
         });
 
         res.json({ message: 'Prescripción actualizada exitosamente', prescripcion: actualizada });
@@ -234,8 +329,21 @@ const obtenerPrescripcionesPorMascota = async (req, res) => {
             return res.status(400).json({ message: 'ID de mascota inválido' });
         }
 
+        const idNum = parseInt(mascotaId);
+        const mascota = await prisma.mascota.findUnique({ where: { id: idNum } });
+        if (!mascota) {
+            return res.status(404).json({ message: `Mascota con ID ${idNum} no encontrada` });
+        }
+
         const prescripciones = await prisma.prescripcion.findMany({
-            where: { mascotaId: parseInt(mascotaId) }
+            where: { mascotaId: idNum },
+            include: {
+                detalles: {
+                    include: { producto: true }
+                },
+                mascota: true
+            },
+            orderBy: { fecha: 'desc' }
         });
         return res.status(200).json(prescripciones);
     } catch (error) {
@@ -251,7 +359,14 @@ const obtenerPrescripcionesPorEstado = async (req, res) => {
         }
 
         const prescripciones = await prisma.prescripcion.findMany({
-            where: { estado: estado.toUpperCase().trim() }
+            where: { estado: estado.trim() },
+            include: {
+                detalles: {
+                    include: { producto: true }
+                },
+                mascota: true
+            },
+            orderBy: { fecha: 'desc' }
         });
         return res.status(200).json(prescripciones);
     } catch (error) {
@@ -264,6 +379,18 @@ const anularPrescripcion = async (req, res) => {
         const { id } = req.params;
         if (!isPositiveInteger(id)) {
             return res.status(400).json({ message: 'ID de prescripción inválido' });
+        }
+
+        const prescripcionExistente = await prisma.prescripcion.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!prescripcionExistente) {
+            return res.status(404).json({ message: 'Prescripción no encontrada' });
+        }
+
+        if (prescripcionExistente.estado === 'ANULADA' || prescripcionExistente.estado === 'Anulada') {
+            return res.status(400).json({ message: 'La prescripción ya se encuentra anulada previamente' });
         }
 
         const prescripcionAnulada = await prisma.prescripcion.update({

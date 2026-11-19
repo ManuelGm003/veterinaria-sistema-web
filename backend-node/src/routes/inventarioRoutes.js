@@ -6,10 +6,11 @@ const {
     getLotes,
     ajustarLote
 } = require('../controllers/inventarioController');
+const { verificarToken, permitirRoles } = require('../middlewares/authMiddleware');
 
-router.post('/entradas', registrarEntrada);
-router.get('/entradas', getEntradas);
-router.get('/lotes', getLotes);
-router.put('/lotes/:id/ajuste', ajustarLote);
+router.post('/entradas', verificarToken, permitirRoles('Administrador', 'Bodeguero'), registrarEntrada);
+router.get('/entradas', verificarToken, permitirRoles('Administrador', 'Bodeguero'), getEntradas);
+router.get('/lotes', verificarToken, permitirRoles('Administrador', 'Bodeguero', 'Cajero'), getLotes);
+router.put('/lotes/:id/ajuste', verificarToken, permitirRoles('Administrador', 'Bodeguero'), ajustarLote);
 
 module.exports = router;

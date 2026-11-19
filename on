@@ -1,0 +1,33 @@
+[33mcommit 4da88dc0272969338f8a4dee30435eb98fdf5e79[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop[m[33m, [m[1;31morigin/develop[m[33m)[m
+Author: Manuel Gutierrez Molina <majgumo@gmail.com>
+Date:   Thu Nov 19 02:42:30 2026 -0600
+
+    validaciones finales
+
+ backend-node/package.json                          |   3 [32m+[m[31m-[m
+ backend-node/prisma.config.ts                      |   3 [32m+[m
+ backend-node/prisma/schema.prisma                  |  61 [32m+[m[31m-[m
+ backend-node/prisma/seed.js                        |  53 [32m+[m[31m-[m
+ backend-node/src/controllers/authControllers.js    |  68 [32m+[m[31m-[m
+ .../src/controllers/historialController.js         |  51 [32m+[m[31m-[m
+ backend-node/src/controllers/mascotasController.js | 199 [32m++++++[m
+ .../src/controllers/prescripcionesController.js    | 151 [32m+++[m[31m-[m
+ backend-node/src/controllers/reportesController.js |  19 [32m+[m[31m-[m
+ backend-node/src/controllers/ventasController.js   |  96 [32m++[m[31m-[m
+ backend-node/src/index.js                          |  11 [32m+[m[31m-[m
+ backend-node/src/middlewares/authMiddleware.js     |  68 [32m++[m
+ backend-node/src/routes/authRoutes.js              |   3 [32m+[m[31m-[m
+ backend-node/src/routes/categoriasRoutes.js        |   9 [32m+[m[31m-[m
+ backend-node/src/routes/configuracionRoutes.js     |   5 [32m+[m[31m-[m
+ backend-node/src/routes/dashboardRoutes.js         |   3 [32m+[m[31m-[m
+ backend-node/src/routes/historialRoutes.js         |  13 [32m+[m
+ backend-node/src/routes/inventarioRoutes.js        |   9 [32m+[m[31m-[m
+ backend-node/src/routes/mascotasRoutes.js          |  16 [32m+[m
+ backend-node/src/routes/prescripcionesRoutes.js    |  19 [32m+[m[31m-[m
+ backend-node/src/routes/productosRoutes.js         |  11 [32m+[m[31m-[m
+ backend-node/src/routes/proveedoresRoutes.js       |   9 [32m+[m[31m-[m
+ backend-node/src/routes/reportesRoutes.js          |   5 [32m+[m[31m-[m
+ backend-node/src/routes/usuariosRoutes.js          |   4 [32m+[m
+ backend-node/src/routes/ventasRoutes.js            |   9 [32m+[m[31m-[m
+ backend-node/tests/test-suite.js                   | 761 [32m+++++++++++++++++++++[m
+ 26 files changed, 1549 insertions(+), 110 deletions(-)

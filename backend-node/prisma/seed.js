@@ -264,19 +264,61 @@ async function main() {
   }
   console.log('✓ Productos y Lotes inicializados con éxito');
 
+  // 5.5 Mascotas y Pacientes de Prueba
+  const mascota1 = await prisma.mascota.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      nombre: 'Max',
+      especie: 'Canino',
+      raza: 'Golden Retriever',
+      edad: 4,
+      sexo: 'Macho',
+      peso: 31.50,
+      propietario: 'Manuel Gutiérrez',
+      telefono: '+505 8899-1122',
+      estado: true
+    }
+  });
+
+  const historial1 = await prisma.historialClinico.findFirst({
+    where: { mascotaId: mascota1.id }
+  });
+  if (!historial1) {
+    await prisma.historialClinico.create({
+      data: {
+        mascotaId: mascota1.id,
+        veterinario: 'Dr. Carlos Mora',
+        diagnostico: 'Bronquitis infecciosa leve',
+        tratamiento: 'Amoxicilina 250mg cada 12h por 7 días',
+        peso: 31.50,
+        fecha: new Date()
+      }
+    });
+  }
+  console.log('✓ Mascota e Historial Clínico inicializados');
+
   // 6. Prescripciones Médicas de Prueba (RF-13)
   const amox = await prisma.producto.findFirst({ where: { codigoBarras: 'M-102' } });
   const keta = await prisma.producto.findFirst({ where: { codigoBarras: 'M-103' } });
 
+  const fechaVenceReceta = new Date();
+  fechaVenceReceta.setDate(fechaVenceReceta.getDate() + 30);
+
   const prescripcion1 = await prisma.prescripcion.upsert({
     where: { numero: 'REC-892' },
-    update: {},
+    update: {
+      fechaVencimiento: fechaVenceReceta,
+      mascotaId: mascota1.id
+    },
     create: {
       numero: 'REC-892',
       cliente: 'Manuel Gutiérrez',
       veterinario: 'Dr. Carlos Mora (Col. Med. #4521)',
       observaciones: 'Tratamiento por cuadro respiratorio agudo en paciente canino Golden Retriever 4 años',
-      estado: 'Activa'
+      estado: 'Activa',
+      fechaVencimiento: fechaVenceReceta,
+      mascotaId: mascota1.id
     }
   });
 
@@ -298,13 +340,16 @@ async function main() {
 
   const prescripcion2 = await prisma.prescripcion.upsert({
     where: { numero: 'REC-101' },
-    update: {},
+    update: {
+      fechaVencimiento: fechaVenceReceta
+    },
     create: {
       numero: 'REC-101',
       cliente: 'Ana Martínez',
       veterinario: 'Dra. Elena Ruiz (Col. Med. #3190)',
       observaciones: 'Procedimiento de sedación menor para limpieza dental en felino',
-      estado: 'Activa'
+      estado: 'Activa',
+      fechaVencimiento: fechaVenceReceta
     }
   });
 
