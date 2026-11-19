@@ -1,4 +1,5 @@
 # Sistema Web Interno - Veterinaria VetSalud 🐾
+[![Tests Backend - VETSALUD](https://github.com/ManuelGm003/veterinaria-sistema-web/actions/workflows/main.yml/badge.svg)](https://github.com/ManuelGm003/veterinaria-sistema-web/actions/workflows/main.yml)
 > Control de Inventarios, Registro de Ventas y Verificación de Prescripciones Médicas.
 
 Sistema desarrollado para la gestión operativa y administrativa de clínicas veterinarias, cumpliendo con los requerimientos funcionales RF-01 al RF-16 basados en la metodología UWE.
