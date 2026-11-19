@@ -34,7 +34,7 @@ jobs:
         run: npx prisma generate
 
       - name: Ejecutar suite de pruebas
-        run: npm test
+        run: node test/test-suite.js
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
