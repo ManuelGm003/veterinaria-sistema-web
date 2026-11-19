@@ -11,3 +11,4 @@ router.get('/mascota/:mascotaId', verificarToken, permitirRoles('Administrador',
 router.get('/paciente/:pacienteId', verificarToken, permitirRoles('Administrador', 'Cajero', 'Bodeguero'), obtenerHistorialPorPaciente);
 
 module.exports = router;
+

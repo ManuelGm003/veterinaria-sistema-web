@@ -1,5 +1,5 @@
 datasource db {
-  provider = "mysql"
+  provider = "mysql" 
 }
 
 generator client {
@@ -33,9 +33,11 @@ model Usuario {
   password       String    @db.VarChar(255)
   rolId          Int       @map("rol_id")
   rol            Rol       @relation(fields: [rolId], references: [id])
-  estado         Boolean   @default(true)
-  ultimaConexion DateTime? @map("ultima_conexion")
-  ventas         Venta[]
+  estado           Boolean   @default(true)
+  ultimaConexion   DateTime? @map("ultima_conexion")
+  intentosFallidos Int       @default(0) @map("intentos_fallidos")
+  bloqueadoHasta   DateTime? @map("bloqueado_hasta")
+  ventas           Venta[]
 
   @@map("usuario")
 }
@@ -128,15 +130,18 @@ model DetalleEntrada {
 }
 
 model Prescripcion {
-  id            Int                   @id @default(autoincrement())
-  numero        String                @unique @db.VarChar(50) // ej: "REC-892"
-  fecha         DateTime              @default(now())
-  cliente       String                @db.VarChar(150)
-  veterinario   String                @db.VarChar(150)
-  observaciones String?               @db.Text
-  estado        String                @default("Activa") @db.VarChar(30) // Activa, Utilizada, Vencida
-  detalles      DetallePrescripcion[]
-  ventas        Venta[]
+  id               Int                   @id @default(autoincrement())
+  numero           String                @unique @db.VarChar(50) // ej: "REC-892"
+  fecha            DateTime              @default(now())
+  fechaVencimiento DateTime?             @map("fecha_vencimiento") @db.Date
+  cliente          String                @db.VarChar(150)
+  veterinario      String                @db.VarChar(150)
+  observaciones    String?               @db.Text
+  estado           String                @default("Activa") @db.VarChar(30) // Activa, Utilizada, Vencida, Anulada
+  mascotaId        Int?                  @map("mascota_id")
+  mascota          Mascota?              @relation(fields: [mascotaId], references: [id])
+  detalles         DetallePrescripcion[]
+  ventas           Venta[]
 
   @@map("prescripcion")
 }
@@ -198,3 +203,35 @@ model Configuracion {
 
   @@map("configuracion")
 }
+
+model Mascota {
+  id             Int                @id @default(autoincrement())
+  nombre         String             @db.VarChar(100)
+  especie        String             @db.VarChar(50) // Canino, Felino, Ave, etc.
+  raza           String?            @db.VarChar(100)
+  edad           Int?
+  sexo           String?            @db.VarChar(10) // Macho, Hembra
+  peso           Decimal?           @db.Decimal(6, 2)
+  propietario    String             @db.VarChar(150)
+  telefono       String?            @db.VarChar(50)
+  estado         Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  historiales    HistorialClinico[]
+  prescripciones Prescripcion[]
+
+  @@map("mascota")
+}
+
+model HistorialClinico {
+  id          Int      @id @default(autoincrement())
+  mascotaId   Int      @map("mascota_id")
+  mascota     Mascota  @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  veterinario String   @db.VarChar(150)
+  diagnostico String   @db.Text
+  tratamiento String?  @db.Text
+  peso        Decimal? @db.Decimal(6, 2)
+  fecha       DateTime @default(now())
+
+  @@map("historial_clinico")
+}
+

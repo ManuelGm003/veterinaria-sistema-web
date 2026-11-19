@@ -14,3 +14,4 @@ router.post('/', verificarToken, permitirRoles('Administrador'), createMascota);
 router.put('/:id', verificarToken, permitirRoles('Administrador'), updateMascota);
 
 module.exports = router;
+

@@ -66,3 +66,4 @@ module.exports = {
     verificarToken,
     permitirRoles
 };
+
